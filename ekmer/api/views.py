@@ -80,3 +80,50 @@ class ProfileView(APIView):
             "telephone":user.telephone,
             "role":user.role
         })
+
+class SignInWithEmailAndPassword(APIView):
+    def post(self,request):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        username = request.data.get('username')
+        telephone = request.data.get('telephone')
+        role = request.data.get('role','user')
+
+        if not email or not password or not telephone or not username:
+            return Response(
+                {"error":"l'adresse mail, le mot de passe, le numéro de télephone et le nom d'utilisateur sont des champs obligatoires."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if Users.objects.filter(email=email).exists():
+            return Response({
+                "error":"Un utilisateur utilise déjà cet adresse email."
+            },status=status.HTTP_400_BAD_REQUEST)
+        
+        if Users.objects.filter(telephone=telephone).exists():
+            return Response({
+                "error":"Un utilisateur utilise déjà ce numéro de téléphone."
+            },status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = Users.objects.create(
+                username = username,
+                telephone = telephone,
+                email = email,
+                password = password,
+                role = role,
+            )
+            return Response(
+                {
+                    "message":"Compte crée avec succès",
+                    "user":{
+                        "id":user.id,
+                        "username":user.username,
+                        "email":user.email,
+                        "telephone":user.telephone
+                    }
+                },status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            return Response({"error":str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
