@@ -54,7 +54,7 @@ def verifier_token(request):
         payload = jwt.decode(token,'SECRET_KEY',algorithms=['HS256'])
         return payload,None
     except jwt.ExpiredSignatureError:
-        return None,"Token expiré, reconnectez*vous ..."
+        return None,"Token expiré, reconnectez vous ..."
     except jwt.DecodeError:
         return None,"Token invalide !"
 
