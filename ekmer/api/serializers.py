@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Users,Categorie, LowCategorie
+from .models import Users,Categorie, LowCategorie, ImageAnnonce, Annonce
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -19,3 +19,16 @@ class LowCategorieSerializer(serializers.ModelSerializer):
     class Meta:
         model = LowCategorie
         fields = '__all__'
+
+class ImagesAnnonceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ImageAnnonce
+        fields = '__all__'
+
+class AnnonceSerializer(serializers.ModelSerializer):
+    images = ImagesAnnonceSerializer(many=True,read_only=True)
+    class Meta:
+        model = Annonce
+        fields = '__all__'
+
+
