@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Users,Categorie
+from .models import Users,Categorie, LowCategorie
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -12,4 +12,10 @@ class CategorieSerializer(serializers.ModelSerializer):
     code = serializers.CharField(read_only=True)
     class Meta:
         model = Categorie
+        fields = '__all__'
+
+class LowCategorieSerializer(serializers.ModelSerializer):
+    code = serializers.CharField(read_only=True)
+    class Meta:
+        model = LowCategorie
         fields = '__all__'
