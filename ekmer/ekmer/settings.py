@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
-    'api'
+    'api',
+    'rest_framework_simplejwt'
 ]
 
 MIDDLEWARE = [
@@ -141,3 +142,6 @@ REST_FRAMEWORK={
 
 }
 APPEND_SLASH = False
+SIMPLE_JWT = {
+    'AUTH_HEADER_TYPES':('Bearer',),
+}

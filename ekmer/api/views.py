@@ -5,7 +5,6 @@ from .serializers import UserSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
 import jwt
 import datetime
 class UserViewSet(viewsets.ModelViewSet):
@@ -19,13 +18,17 @@ class LoginWithEmailAndPasswordView(APIView):
         password = request.data.get('password') 
 
         try:
-            user = Users.objects.get(email=email,password=password)
+            user = Users.objects.get(email=email)
         except Users.DoesNotExist:
             return Response(
                 {"error":"Email ou mot de passe incorrect"},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        
+        if user.password!=password:
+            return Response(
+                {"error":"Email ou mot de passe incorrect"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         token = jwt.encode(
             {
                 'id':str(user.id),
@@ -45,6 +48,44 @@ class LoginWithEmailAndPasswordView(APIView):
                 "is_active":user.is_active
             }
         })
+
+class LoginWithPhoneAndPasswordView(APIView):
+    def post(self,request):
+        phone = request.data.get('telephone')
+        password = request.data.get('password') 
+
+        try:
+            user = Users.objects.get(telephone=phone)
+        except Users.DoesNotExist:
+            return Response(
+                {"error":"Téléphone ou mot de passe incorrect"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        if user.password!=password:
+            return Response(
+                {"error":"Téléphone ou mot de passe incorrect"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        token = jwt.encode(
+            {
+                'id':str(user.id),
+                'email':user.email,
+                'role':user.role,
+                'exp':datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+            }, 'SECRET_KEY',algorithm='HS256'
+        )
+        return Response({
+            "token":token,
+            "user":{
+                "id": str(user.id),
+                "email":user.email,
+                "username":user.username,
+                "telephone":user.telephone,
+                "role": user.role,
+                "is_active":user.is_active
+            }
+        })
+
     
 def verifier_token(request):
     token = request.headers.get('Authorization')

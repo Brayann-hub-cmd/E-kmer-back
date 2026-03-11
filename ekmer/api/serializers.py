@@ -30,5 +30,6 @@ class AnnonceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Annonce
         fields = '__all__'
+        read_only_fields = ['code','created_at']
 
 
