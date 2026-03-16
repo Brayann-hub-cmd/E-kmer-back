@@ -1,5 +1,5 @@
 import jwt
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission,SAFE_METHODS
 from rest_framework.exceptions import AuthenticationFailed
 from .models import Users
 
@@ -87,3 +87,14 @@ class IsUserRole(BasePermission):
             return True
 
         return False
+
+class AnnoncePermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+        if request.user.role=='admin':
+            return request.method == 'DELETE'
+        
+        return obj.vendeur == request.user
+        
+        

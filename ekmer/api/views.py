@@ -93,6 +93,7 @@ def verifier_token(request):
         return None,"Token Manquant"
     try:
         payload = jwt.decode(token,'SECRET_KEY',algorithms=['HS256'])
+        request.user = Users.objects.get(id=payload['id'])
         return payload,None
     except jwt.ExpiredSignatureError:
         return None,"Token expiré, reconnectez vous ..."
