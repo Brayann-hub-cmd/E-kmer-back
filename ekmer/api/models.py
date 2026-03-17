@@ -57,6 +57,7 @@ class LowCategorie(models.Model):
 class Annonce(models.Model):
     code = models.CharField(primary_key=True,max_length=10)
     sous_categorie = models.ForeignKey(LowCategorie,on_delete=models.CASCADE,related_name='annonces')
+    vendeur = models.ForeignKey(Users,on_delete=models.CASCADE,related_name='annonces',null=False)
     titre = models.CharField(max_length=128,null=False,blank=False)
     description = models.TextField()
     prix = models.IntegerField(null=False,blank=False)
