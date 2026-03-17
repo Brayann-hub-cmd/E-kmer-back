@@ -141,7 +141,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 REST_FRAMEWORK={
-
+    
 }
 APPEND_SLASH = False
 SIMPLE_JWT = {
