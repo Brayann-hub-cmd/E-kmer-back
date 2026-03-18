@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 import uuid
+
+from ekmer.ekmer import settings
 class Users(models.Model):
     id = models.UUIDField(primary_key=True,default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=128,null=True,blank=True)
@@ -85,3 +87,42 @@ class ImageAnnonce(models.Model):
     image = models.ImageField(null=False,blank=False,upload_to="uploads/annonces/")
     produit = models.ForeignKey(Annonce,on_delete=models.CASCADE,related_name="images")
 
+class Livreur(models.Model):
+    idLivreur = models.UUIDField(primary_key=True,default=uuid.uuid4, editable=False)
+
+    STATUT_CHOICES = [
+        ('disponible', 'Disponible'),
+        ('occupe', 'Occupé'),
+        ('offline', 'Hors ligne'),
+    ]
+
+    VEHICULE_CHOICES = [
+        ('moto', 'Moto'),
+        ('voiture', 'Voiture'),
+        ('velo', 'Vélo'),
+    ]
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='livreur'
+    )
+
+    telephone = models.CharField(max_length=20, unique=True)
+
+    numero_permis = models.CharField(max_length=50, blank=True, null=True)
+    type_vehicule = models.CharField(max_length=20, choices=VEHICULE_CHOICES)
+    plaque_immatriculation = models.CharField(max_length=20, blank=True, null=True)
+
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='offline')
+    actif = models.BooleanField(default=True)
+
+    
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user.username
