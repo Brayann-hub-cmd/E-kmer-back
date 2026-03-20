@@ -14,7 +14,7 @@ class AnnonceViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         payload, erreur = verifier_token(request)
         if erreur:
-            return self.response({"error":erreur},status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error":erreur},status=status.HTTP_401_UNAUTHORIZED)
         try:
             user = Users.objects.get(id=payload['id'])
         except Users.DoesNotExist:
