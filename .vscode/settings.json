@@ -1,3 +1,4 @@
 {
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python.defaultInterpreterPath": "${workspaceFolder}/venv/Scripts/python.exe",
+    "python.terminal.activateEnvironment": true
 }
