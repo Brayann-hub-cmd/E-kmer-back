@@ -11,7 +11,7 @@ class CategorieViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list','retrieve']:
             return [AllowAny()]
-        return [IsAdminRole]
+        return [IsAdminRole()]
 
 class LowCategorieViewSet(viewsets.ModelViewSet):
     queryset = LowCategorie.objects.all()
@@ -19,4 +19,4 @@ class LowCategorieViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list','retrieve']:
             return [AllowAny()]
-        return [IsAdminRole]
+        return [IsAdminRole()]
