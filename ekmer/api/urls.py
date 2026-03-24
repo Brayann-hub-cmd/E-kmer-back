@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from .views import UserViewSet, LoginWithEmailAndPasswordView,ProfileView,SignInWithEmailAndPassword,LoginWithPhoneAndPasswordView
-from .categorie_views import CategorieViewSet,LowCategorieViewSet
+from .categorie_views import CategorieViewSet,LowCategorieViewSet,SousCategorieParCategorieView
 from .annonce_views import AnnonceViewSet
 from django.urls import path,include
 
@@ -14,5 +14,6 @@ urlpatterns = [
     path('auth/login/',LoginWithEmailAndPasswordView.as_view(),name='login'),
     path('auth/login/tel',LoginWithPhoneAndPasswordView.as_view(),name='logintel'),
     path('auth/profile/',ProfileView.as_view(),name='profile'),
-    path('auth/register/',SignInWithEmailAndPassword.as_view(),name='register')
+    path('auth/register/',SignInWithEmailAndPassword.as_view(),name='register'),
+    path('low_categories/<str:categorie_code>/sous_categories/',SousCategorieParCategorieView.as_view())
 ]
