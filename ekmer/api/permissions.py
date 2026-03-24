@@ -12,7 +12,8 @@ class IsAdminRole(BasePermission):
         auth_header = request.headers.get("Authorization")
 
         if not auth_header:
-            raise AuthenticationFailed("Token manquant")
+            # raise AuthenticationFailed("Token manquant")
+            return False
         
         try:
             parts = auth_header.split(" ")
@@ -23,21 +24,24 @@ class IsAdminRole(BasePermission):
                 token = parts[0]
 
         except IndexError:
-            raise AuthenticationFailed("Format du token invalide")
+            raise False
 
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed("Token expiré")
+            # raise AuthenticationFailed("Token expiré")
+            return False
         except jwt.InvalidTokenError:
-            raise AuthenticationFailed("Token invalide")
+            # raise AuthenticationFailed("Token invalide")
+            return False
 
         user_id = payload.get("id")
 
         try:
             user = Users.objects.get(id=user_id)
         except Users.DoesNotExist:
-            raise AuthenticationFailed("Utilisateur introuvable")
+            # raise AuthenticationFailed("Utilisateur introuvable")
+            return False
 
         # on attache l'utilisateur à la requête
         request.user = user

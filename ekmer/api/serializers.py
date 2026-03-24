@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Users,Categorie, LowCategorie, ImageAnnonce, Annonce
+from .models import Livreur, Users,Categorie, LowCategorie, ImageAnnonce, Annonce
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -49,3 +49,7 @@ class AnnonceSerializer(serializers.ModelSerializer):
         return annonce
 
 
+class LivreurSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Livreur
+        fields = '__all__'
