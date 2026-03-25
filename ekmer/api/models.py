@@ -79,7 +79,8 @@ class Annonce(models.Model):
         super().save(*args,**kwargs)
 
     class Meta:
-        db_table = "annonces"    
+        db_table = "annonces"
+        ordering=['-created_at']    
 
 class ImageAnnonce(models.Model):
     id = models.AutoField(primary_key=True)

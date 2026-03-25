@@ -47,7 +47,10 @@ class AnnonceSerializer(serializers.ModelSerializer):
             ImageAnnonce.objects.create(produit=annonce,image=image)
 
         return annonce
-
+    def get_image(self,obj):
+        if obj.image:
+            return f"/media/annonces/{obj.image.name.split('/')[-1]}"
+        return None
 
 class LivreurSerializer(serializers.ModelSerializer):
     class Meta:
