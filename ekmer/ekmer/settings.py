@@ -147,3 +147,6 @@ APPEND_SLASH = False
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES':('Bearer',),
 }
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
