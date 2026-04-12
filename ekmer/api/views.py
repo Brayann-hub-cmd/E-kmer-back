@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 import jwt
 import datetime
+from django.conf import settings
 class UserViewSet(viewsets.ModelViewSet):
     queryset = Users.objects.all()
     serializer_class = UserSerializer
@@ -35,7 +36,7 @@ class LoginWithEmailAndPasswordView(APIView):
                 'email':user.email,
                 'role':user.role,
                 'exp':datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-            }, 'SECRET_KEY',algorithm='HS256'
+            }, settings.SECRET_KEY,algorithm='HS256'
         )
         return Response({
             "token":token,
@@ -72,7 +73,7 @@ class LoginWithPhoneAndPasswordView(APIView):
                 'email':user.email,
                 'role':user.role,
                 'exp':datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-            }, 'SECRET_KEY',algorithm='HS256'
+            }, settings.SECRET_KEY,algorithm='HS256'
         )
         return Response({
             "token":token,
@@ -88,18 +89,31 @@ class LoginWithPhoneAndPasswordView(APIView):
 
     
 def verifier_token(request):
-    token = request.headers.get('Authorization')
-    if not token:
+    # print("ALL HEADERS: ", dict(request.headers))
+    auth_header = request.headers.get('Authorization')
+    # print("AUTH HEADERS: ", auth_header)
+    if not auth_header:
         return None,"Token Manquant"
+    if not auth_header.startswith('Bearer '):
+        return None, "Format du token invalide"
+    token = auth_header.split(' ')[1]
+    print("TOKEN REçu: ",token[:20])
+    print("SECRET KEY: ",settings.SECRET_KEY[:15])
+
     try:
-        payload = jwt.decode(token,'SECRET_KEY',algorithms=['HS256'])
+        payload = jwt.decode(token,settings.SECRET_KEY,algorithms=['HS256'])
+        print("PAYLOAD DECODED :",payload)
         request.user = Users.objects.get(id=payload['id'])
         return payload,None
+    except Exception as e:
+        print("Erreur inattendue: ",str(e))
+        return None,str(e)
     except jwt.ExpiredSignatureError:
         return None,"Token expiré, reconnectez vous ..."
     except jwt.DecodeError:
         return None,"Token invalide !"
-
+    except Users.DoesNotExist:
+        return None, "Utilisateur introuvable"
 class ProfileView(APIView):
     def get(self,request):
         payload,erreur = verifier_token(request=request)
