@@ -89,24 +89,18 @@ class LoginWithPhoneAndPasswordView(APIView):
 
     
 def verifier_token(request):
-    # print("ALL HEADERS: ", dict(request.headers))
     auth_header = request.headers.get('Authorization')
-    # print("AUTH HEADERS: ", auth_header)
     if not auth_header:
         return None,"Token Manquant"
     if not auth_header.startswith('Bearer '):
         return None, "Format du token invalide"
     token = auth_header.split(' ')[1]
-    print("TOKEN REçu: ",token[:20])
-    print("SECRET KEY: ",settings.SECRET_KEY[:15])
 
     try:
         payload = jwt.decode(token,settings.SECRET_KEY,algorithms=['HS256'])
-        print("PAYLOAD DECODED :",payload)
         request.user = Users.objects.get(id=payload['id'])
         return payload,None
     except Exception as e:
-        print("Erreur inattendue: ",str(e))
         return None,str(e)
     except jwt.ExpiredSignatureError:
         return None,"Token expiré, reconnectez vous ..."
@@ -124,10 +118,11 @@ class ProfileView(APIView):
             )
         try:
             user = Users.objects.get(id=payload['id'])
-        except jwt.ExpiredSignatureError:
-            return Response({"error":"Token expiré..."})
-        except jwt.DecodeError:
-            return Response({"error":"Token invalide..."})
+        except Users.DoesNotExist:
+            return Response(
+                {"error":"Utiliateur introuvable"},
+                status=status.HTTP_404_NOT_FOUND
+            )
         
         return Response({
             "id": str(user.id),

@@ -18,4 +18,5 @@ urlpatterns = [
     path('auth/register/',SignInWithEmailAndPassword.as_view(),name='register'),
     path('low_categories/<str:categorie_code>/sous_categories/',SousCategorieParCategorieView.as_view()),
     path('all_annonces/<str:low_categorie_code>/annonces/',AnnonceParSousCategorie.as_view())
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] 
+# + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
