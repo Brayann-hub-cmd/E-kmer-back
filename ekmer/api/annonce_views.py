@@ -36,3 +36,20 @@ class AnnonceParSousCategorie(APIView):
         annonces = Annonce.objects.filter(sous_categorie=low_categorie_code)
         serializer = AnnonceSerializer(annonces,many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class RechercherAnnonce(APIView):
+    permission_classes = []
+    def get(self,request):
+        titre = request.query_params.get('titre', '').strip()
+        categorie_id = request.query_params.get('categorie', None)
+
+        if not titre:
+            return Response(
+                {'error':'Le champ de recherche d\'un produit est requis! veuillez le remplir'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        annonces = Annonce.objects.filter(titre__icontains=titre)
+        if categorie_id:
+            annonces = annonces.filter(sous_categorie__categorie__code=categorie_id)
+        serializer = AnnonceSerializer(annonces,many=True,context={'request':request})
+        return Response(serializer.data,status=status.HTTP_200_OK)

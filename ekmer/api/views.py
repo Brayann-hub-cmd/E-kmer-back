@@ -91,7 +91,7 @@ class LoginWithPhoneAndPasswordView(APIView):
 def verifier_token(request):
     auth_header = request.headers.get('Authorization')
     if not auth_header:
-        return None,"Token Manquant"
+        return None,"Token Manquant,connectez vous!"
     if not auth_header.startswith('Bearer '):
         return None, "Format du token invalide"
     token = auth_header.split(' ')[1]
