@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 import uuid
-
 class Users(models.Model):
     id = models.UUIDField(primary_key=True,default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=128,null=True,blank=True)
@@ -122,3 +121,41 @@ class Livreur(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.type_vehicule}"
+
+class Vente(models.Model):
+    code = models.CharField(primary_key=True, max_length=16)
+    acheteur = models.ForeignKey(Users,on_delete=models.CASCADE,related_name='achats')
+    prix_total = models.IntegerField(null=False,blank=False)
+    statut = models.CharField(max_length=64,default='En attente')
+    mode_paiement = models.CharField(max_length=64,blank=False)
+    created_at = models.DateTimeField(auto_now_add=True,editable=False)
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            from datetime import datetime
+            annee = datetime.now().year
+            last = Vente.objects.filter(code__startswith=f"V-{annee}").order_by('code').last()
+    
+            if last:
+                number = int(last.code.split('-')[2])+1
+            else:
+                number = 1
+            self.code = f"V-{annee}-{number:0>10d}"
+        if not self.prix_total:
+            self.prix_total = self.quantite * self.annonce.prix
+        super().save(*args,**kwargs)
+    
+    class Meta:
+        db_table = "ventes"
+
+class LigneVente(models.Model):
+    id = models.AutoField(primary_key=True)
+    vente = models.ForeignKey(Vente,on_delete=models.CASCADE,related_name='lignes')
+    annonce = models.ForeignKey(Annonce, on_delete=models.CASCADE, related_name='lignes_vente')
+    quantite = models.IntegerField(null=False,blank=False)
+    prix_unitaire = models.IntegerField(null=False,blank=False)
+
+    class Meta:
+        db_table = "lignes_vente"
+
+

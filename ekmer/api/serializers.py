@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Livreur, Users,Categorie, LowCategorie, ImageAnnonce, Annonce
+from .models import Livreur, Users,Categorie, LowCategorie, ImageAnnonce, Annonce, Vente, LigneVente
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -56,3 +56,55 @@ class LivreurSerializer(serializers.ModelSerializer):
     class Meta:
         model = Livreur
         fields = '__all__'
+
+class LigneVenteSerializer(serializers.ModelSerializer):
+    annonce_titre = serializers.CharField(source='annonce.titre',read_only=True)
+    prix_unitaire = serializers.IntegerField(read_only=True)
+    # vendeur_nom = serializers.CharField(source='annonce.vendeur.username',read_only=True)
+    class Meta:
+        model = LigneVente
+        fields = [
+            'id',
+            'annonce',
+            'annonce_titre',
+            'quantite',
+            'prix_unitaire',
+        ]
+
+class VenteSerializer(serializers.ModelSerializer):
+    lignes = LigneVenteSerializer(many=True)
+    acheteur_nom = serializers.CharField(source='acheteur.username',read_only=True)
+
+    class Meta:
+        model = Vente
+        fields = [
+            'code',
+            'acheteur',
+            'acheteur_nom',
+            'lignes',
+            'statut',
+            'prix_total',
+            'created_at'
+        ]
+        read_only_fields = ['code','prix_total','acheteur','created_at']
+
+    def create(self, validated_data):
+        lignes_data = validated_data.pop('lignes')
+        vente = Vente.objects.create(**validated_data)
+        prix_total = 0
+        for ligne in lignes_data:
+            annonce = ligne['annonce']
+            quantite = ligne['quantite']
+            prix_unitaire = annonce.prix
+
+            LigneVente.objects.create(
+                vente = vente,
+                annonce = annonce,
+                quantite = quantite,
+                prix_unitaire = prix_unitaire
+            )
+
+            prix_total += prix_unitaire * quantite
+        vente.prix_total = prix_total
+        vente.save()
+        return vente
