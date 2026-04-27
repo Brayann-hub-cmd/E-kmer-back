@@ -159,3 +159,29 @@ class LigneVente(models.Model):
         db_table = "lignes_vente"
 
 
+class Consultation(models.Model):
+    id = models.AutoField(primary_key=True)
+    client = models.ForeignKey(
+        Users,
+        on_delete=models.CASCADE,
+        related_name='consultations'
+    )
+    annonce = models.ForeignKey(
+        Annonce,
+        on_delete=models.CASCADE,
+        related_name='consultations'
+    )
+    date_consultation = models.DateTimeField(auto_now_add=True, editable=False)
+
+    class Meta:
+        db_table = "consultations"
+        ordering = ['-date_consultation']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['client', 'annonce'],
+                name='unique_consultation_par_client_annonce'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.client.username} → {self.annonce.titre}"
