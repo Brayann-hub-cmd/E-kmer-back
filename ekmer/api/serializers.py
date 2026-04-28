@@ -25,6 +25,11 @@ class ImagesAnnonceSerializer(serializers.ModelSerializer):
         model = ImageAnnonce
         fields = '__all__'
 
+class VendeurSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Users
+        fields = ['id','username','created_at']
+
 class AnnonceSerializer(serializers.ModelSerializer):
     code = serializers.CharField(read_only=True)
     images = ImagesAnnonceSerializer(many=True,read_only=True)
@@ -33,7 +38,7 @@ class AnnonceSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    vendeur = serializers.StringRelatedField(read_only=True)
+    vendeur = VendeurSerializer(read_only=True)
 
     class Meta:
         model = Annonce

@@ -2,17 +2,14 @@ import jwt
 from rest_framework.permissions import BasePermission,SAFE_METHODS
 from rest_framework.exceptions import AuthenticationFailed
 from .models import Users
-
-SECRET_KEY = "SECRET_KEY"
+from django.conf import settings
+SECRET_KEY = settings.SECRET_KEY
 
 class IsAdminRole(BasePermission):
 
     def has_permission(self, request, view):
-
         auth_header = request.headers.get("Authorization")
-
         if not auth_header:
-            # raise AuthenticationFailed("Token manquant")
             return False
         
         try:
@@ -36,19 +33,15 @@ class IsAdminRole(BasePermission):
             return False
 
         user_id = payload.get("id")
-
         try:
             user = Users.objects.get(id=user_id)
         except Users.DoesNotExist:
-            # raise AuthenticationFailed("Utilisateur introuvable")
             return False
-
-        # on attache l'utilisateur à la requête
+        
         request.user = user
 
         if user.role == "admin":
             return True
-
         return False
 
 class IsUserRole(BasePermission):
