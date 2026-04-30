@@ -75,7 +75,14 @@ class LigneVenteSerializer(serializers.ModelSerializer):
             'quantite',
             'prix_unitaire',
         ]
+class VenteDetailSerializer(serializers.ModelSerializer):
+    lignes = LigneVenteSerializer(many=True,read_only=True)
 
+    class Meta:
+        model=Vente
+        fields = [
+            'code','acheteur','prix_total','statut','mode_paiement','created_at','lignes'
+        ]
 class VenteSerializer(serializers.ModelSerializer):
     lignes = LigneVenteSerializer(many=True)
     acheteur_nom = serializers.CharField(source='acheteur.username',read_only=True)
@@ -89,7 +96,8 @@ class VenteSerializer(serializers.ModelSerializer):
             'lignes',
             'statut',
             'prix_total',
-            'created_at'
+            'created_at',
+            'mode_paiement'
         ]
         read_only_fields = ['code','prix_total','acheteur','created_at']
 

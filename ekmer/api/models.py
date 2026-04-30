@@ -123,9 +123,9 @@ class Livreur(models.Model):
         return f"{self.user.username} - {self.type_vehicule}"
 
 class Vente(models.Model):
-    code = models.CharField(primary_key=True, max_length=16)
+    code = models.CharField(primary_key=True, max_length=17)
     acheteur = models.ForeignKey(Users,on_delete=models.CASCADE,related_name='achats')
-    prix_total = models.IntegerField(null=False,blank=False)
+    prix_total = models.IntegerField(null=True,blank=True,default=0)
     statut = models.CharField(max_length=64,default='En attente')
     mode_paiement = models.CharField(max_length=64,blank=False)
     created_at = models.DateTimeField(auto_now_add=True,editable=False)
@@ -140,9 +140,8 @@ class Vente(models.Model):
                 number = int(last.code.split('-')[2])+1
             else:
                 number = 1
-            self.code = f"V-{annee}-{number:0>10d}"
-        if not self.prix_total:
-            self.prix_total = self.quantite * self.annonce.prix
+            self.code = f"V-{annee}-{number:0>9d}"
+        
         super().save(*args,**kwargs)
     
     class Meta:
@@ -154,6 +153,18 @@ class LigneVente(models.Model):
     annonce = models.ForeignKey(Annonce, on_delete=models.CASCADE, related_name='lignes_vente')
     quantite = models.IntegerField(null=False,blank=False)
     prix_unitaire = models.IntegerField(null=False,blank=False)
+
+    def save(self,*args,**kwargs):
+        if not self.prix_unitaire:
+            self.prix_unitaire = self.annonce.prix
+        super().save(*args,**kwargs)
+
+        vente = self.vente
+        vente.prix_total = sum(
+            ligne.prix_unitaire * ligne.quantite
+            for ligne in vente.lignes.all()
+        )
+        vente.save()
 
     class Meta:
         db_table = "lignes_vente"

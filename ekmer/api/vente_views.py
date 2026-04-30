@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 from .permissions import AnnoncePermission
-from .serializers import VenteSerializer
+from .serializers import VenteSerializer,VenteDetailSerializer
 from .models import Vente, Users, Annonce
 from django.conf import settings
 import jwt
@@ -72,7 +72,7 @@ class VenteView(APIView):
                 return Response({'error':f'Annonce {annonce_code} introuvable.'}, status=status.HTTP_404_NOT_FOUND)
             
             if annonce.vendeur == user:
-                return Response({'error':f'Vous ne pouvez pas achetez votre propre annonce : {annonce.titre}'},status=status.HTTP_403_FORBIDDEN)
+                return Response({'error':f'Vous ne pouvez pas commander votre propre annonce : {annonce.titre}'},status=status.HTTP_403_FORBIDDEN)
             
             if quantite > annonce.qte:
                 return Response({'error':f'la quantité commandé insuffisante pour {annonce.titre}, il en reste que {annonce.qte} disponible(s)'},status=status.HTTP_400_BAD_REQUEST)
@@ -88,8 +88,26 @@ class VenteView(APIView):
 
 class VenteDetailView(APIView):
     permission_classes = [AllowAny]
-    def get_object(self,code):
+    def get(self,request,code):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
         try:
-            return Vente.objects.get(code = code)
+            vente = Vente.objects.prefetch_related('lignes').get(code=code)
         except Vente.DoesNotExist:
-            return None
+            return Response(
+                {"error":"Vente introuvable"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        if vente.acheteur != user:
+            return Response(
+                {"error":"Accès refusé"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        serializer = VenteDetailSerializer(vente)
+        return Response(serializer.data,status=status.HTTP_200_OK)
