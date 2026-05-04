@@ -65,7 +65,6 @@ class LivreurSerializer(serializers.ModelSerializer):
 class LigneVenteSerializer(serializers.ModelSerializer):
     annonce_titre = serializers.CharField(source='annonce.titre',read_only=True)
     prix_unitaire = serializers.IntegerField(read_only=True)
-    # vendeur_nom = serializers.CharField(source='annonce.vendeur.username',read_only=True)
     class Meta:
         model = LigneVente
         fields = [
@@ -75,6 +74,24 @@ class LigneVenteSerializer(serializers.ModelSerializer):
             'quantite',
             'prix_unitaire',
         ]
+
+class LigneDetailVenteSerializer(serializers.ModelSerializer):
+    annonce_titre = serializers.CharField(source='annonce.titre',read_only=True)
+    annonce_image = serializers.ImageField(source='annonce.image',read_only=True)
+    annonce_qte = serializers.IntegerField(source='annonce.qte',read_only=True)
+    prix_unitaire = serializers.IntegerField(read_only=True)
+    class Meta:
+        model = LigneVente
+        fields = [
+            'id',
+            'annonce',
+            'annonce_titre',
+            'annonce_image',
+            'annonce_qte',
+            'quantite',
+            'prix_unitaire',
+        ]
+
 class VenteDetailSerializer(serializers.ModelSerializer):
     lignes = LigneVenteSerializer(many=True,read_only=True)
 

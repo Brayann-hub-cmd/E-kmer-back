@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 from .permissions import AnnoncePermission
-from .serializers import VenteSerializer,VenteDetailSerializer
+from .serializers import VenteSerializer,VenteDetailSerializer,LigneVenteSerializer,LigneDetailVenteSerializer
 from .models import Vente, Users, Annonce
 from django.conf import settings
 import jwt
@@ -110,4 +110,52 @@ class VenteDetailView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         serializer = VenteDetailSerializer(vente)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+
+class VentesVendeurView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self,request):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
+
+        ventes = Vente.objects.filter(
+            lignes__annonce__vendeur=user
+        ).distinct()
+
+        result = []
+        for vente in ventes:
+            lignes = vente.lignes.filter(annonce__vendeur=user)
+            result.append({
+                "code":vente.code,
+                "acheteur":vente.acheteur.id,
+                "acheteur_nom":vente.acheteur.username,
+                "status":vente.statut,
+                "mode_paiement":vente.mode_paiement,
+                "created_at":vente.created_at.isoformat(),
+                "lignes":LigneDetailVenteSerializer(lignes,many=True).data
+            })
+        return Response(result,status=status.HTTP_200_OK)
+    
+class AchatUtilisateurView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self,request):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
+        ventes = Vente.objects.filter(acheteur=user).order_by('-created_at')
+        serializer = VenteDetailSerializer(ventes,many=True)
+
         return Response(serializer.data,status=status.HTTP_200_OK)
