@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 from .permissions import AnnoncePermission
-from .serializers import VenteSerializer,VenteDetailSerializer,LigneVenteSerializer,LigneDetailVenteSerializer
-from .models import Vente, Users, Annonce
+from .serializers import VenteSerializer,VenteDetailSerializer,LigneVenteSerializer,LigneDetailVenteSerializer,PanierSerializer,PanierItemSerializer
+from .models import Vente, Users, Annonce,Panier,PanierItem
 from django.conf import settings
 import jwt
 def verify(request):
@@ -159,3 +159,80 @@ class AchatUtilisateurView(APIView):
         serializer = VenteDetailSerializer(ventes,many=True)
 
         return Response(serializer.data,status=status.HTTP_200_OK)
+    
+class PanierView(APIView):
+    def get(self,request):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
+        panier,_=Panier.objects.get_or_create(user=user)
+        return Response(PanierSerializer(panier).data)
+    
+class PanierItemAddView(APIView):
+    def post(self,request):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
+        panier,_ = Panier.objects.get_or_create(user=user)
+        serializer = PanierItemSerializer(data = request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+        annonce = serializer.validated_data["annonce"]
+        quantite = serializer.validated_data["quantite"]
+
+        item,created = PanierItem.objects.get_or_create(
+            panier = panier, annonce=annonce, defaults={"quantite":quantite}
+        )
+        if not created:
+            item.quantite += quantite
+            item.save()
+
+        return Response(PanierItemSerializer(item).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+    
+class PanierItemDetailView(APIView):
+    def patch(self,request, item_id):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
+        try:
+            panier = Panier.objects.get(user=user)
+            item = PanierItem.objects.get(id=item_id,panier=panier)
+        except (Panier.DoesNotExist , PanierItem.DoesNotExist):
+            return Response({"error":"Introuvable"},status=status.HTTP_404_NOT_FOUND)
+        quantite = request.data.get("quantite")
+        if not quantite or int(quantite)<1:
+            return Response({"error":"Quantité invalide !"},status=status.HTTP_400_BAD_REQUEST)
+        item.quantite = int(quantite)
+        item.save()
+        return Response(PanierItemSerializer(item).data)
+    
+    def delete(self,request):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
+        try:
+            user.panier.vider()
+        except Panier.DoesNotExist:
+            pass
+        return Response({"message":"Panier vidé."})
+        
