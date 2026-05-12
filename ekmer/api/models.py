@@ -205,7 +205,7 @@ class Order(models.Model):
         ANNULEE = "annulee", "Annulée"
     user = models.ForeignKey(Users,on_delete=models.CASCADE,related_name="orders")
     statut = models.CharField(max_length=20,choices=Statut.choices, default=Statut.EN_ATTENTE)
-    total = models.DecimalField(max_length=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     confirme_le = models.DateTimeField(null=True,blank=True)
     

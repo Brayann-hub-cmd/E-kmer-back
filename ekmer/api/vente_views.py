@@ -3,9 +3,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 from .permissions import AnnoncePermission
-from .serializers import VenteSerializer,VenteDetailSerializer,LigneVenteSerializer,LigneDetailVenteSerializer,PanierSerializer,PanierItemSerializer
-from .models import Vente, Users, Annonce,Panier,PanierItem
+from .serializers import VenteSerializer,VenteDetailSerializer,LigneVenteSerializer,LigneDetailVenteSerializer,PanierSerializer,PanierItemSerializer,OrderSerializer
+from .models import Vente, Users, Annonce,Panier,PanierItem,Order,OrderItems
 from django.conf import settings
+from django.shortcuts import get_object_or_404
 import jwt
 def verify(request):
     auth_header = request.headers.get('Authorization')
@@ -194,8 +195,7 @@ class PanierItemAddView(APIView):
             panier = panier, annonce=annonce, defaults={"quantite":quantite}
         )
         if not created:
-            item.quantite += quantite
-            item.save()
+            return Response({"error":"Cette annonce est déjà dans le panier."},status=status.HTTP_400_BAD_REQUEST)
 
         return Response(PanierItemSerializer(item).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
     
@@ -220,7 +220,8 @@ class PanierItemDetailView(APIView):
         item.quantite = int(quantite)
         item.save()
         return Response(PanierItemSerializer(item).data)
-    
+
+class PanierViderView(APIView):    
     def delete(self,request):
         auth,error = verify(request)
         if error:
@@ -235,4 +236,60 @@ class PanierItemDetailView(APIView):
         except Panier.DoesNotExist:
             pass
         return Response({"message":"Panier vidé."})
+
+class OrderListCreateView(APIView):
+    def get(self,request):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
+        orders = Order.objects.filter(user=user).order_by("-created_at")
+        return Response(OrderSerializer(orders,many=True).data)
+  
+    def post(self,request):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
+        try:
+            panier = user.panier
+        except Panier.DoesNotExist:
+            return Response({"error":"Panier Introuvable"},status=status.HTTP_404_NOT_FOUND)
+        items = panier.items.select_related("annonce").all()
+        if not items.exists():
+            return Response({"error":"Le panier est vide."},status=status.HTTP_400_BAD_REQUEST)
+        total = sum(item.sous_total() for item in items)
+        order = Order.objects.create(user=user,total=total)
+        OrderItems.objects.bulk_create([
+            OrderItems(
+                order = order, annonce = item.annonce, titre = item.annonce.titre, prix = item.annonce.prix, quantite = item.quantite
+            ) for item in items
+        ])
+        return Response(OrderSerializer(order).data,status=status.HTTP_201_CREATED)
+    
+class OrderConfirmerView(APIView):
+    def post(self,request,order_id):
+        auth,error = verify(request)
+        if error:
+            return Response(
+                {'error':error},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        request.user = auth
+        user = request.user
+        order = get_object_or_404(Order,id=order_id,user=user)
+        if order.statut == Order.Statut.ANNULEE:
+            return Response({"error":"Commande annulée."},status=status.HTTP_400_BAD_REQUEST)
+        order.confirmer()
+        return Response(OrderSerializer(order).data)
+    
+         
         

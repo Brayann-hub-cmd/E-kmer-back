@@ -146,16 +146,16 @@ class PanierItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PanierItem
-        fields = ["id","annonce","annonce_titre","annonce_prix","quantite","add_at"]
+        fields = ["id","annonce","annonce_titre","annonce_prix","sous_total","quantite","add_at"]
         read_only_fields = ["id","add_at"]
 
-        def get_sous_total(self,obj):
-            return obj.sous_total()
+    def get_sous_total(self,obj):
+        return obj.annonce.prix * obj.quantite
         
-        def validate_quantite(self,value):
-            if value < 1:
-                raise serializers.ValidationError("La quantité doit être 1 au moins !")
-            return value
+    def validate_quantite(self,value):
+        if value < 1:
+            raise serializers.ValidationError("La quantité doit être 1 au moins !")
+        return value
         
 class PanierSerializer(serializers.ModelSerializer):
     items = PanierItemSerializer(many=True,read_only=True)
