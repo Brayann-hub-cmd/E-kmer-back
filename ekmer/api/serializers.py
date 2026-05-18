@@ -144,7 +144,7 @@ class PanierItemSerializer(serializers.ModelSerializer):
     annonce_prix = serializers.DecimalField(source="annonce.prix", max_digits=12, decimal_places=2,read_only=True)
     sous_total = serializers.SerializerMethodField()
     annonce_image= serializers.ImageField(source="annonce.image",read_only=True)
-    annonce_vendeur = serializers.CharField(source="annonce.user.username",read_only=True)
+    annonce_vendeur = serializers.CharField(source="annonce.vendeur.username",read_only=True)
     class Meta:
         model = PanierItem
         fields = ["id","annonce","annonce_titre","annonce_prix","annonce_image","annonce_vendeur","sous_total","quantite","add_at"]
