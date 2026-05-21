@@ -32,3 +32,4 @@ class SousCategorieParCategorieView(APIView):
         sous_categories = LowCategorie.objects.filter(categorie=categorie_code)
         serializer = LowCategorieSerializer(sous_categories,many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    

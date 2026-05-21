@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 import uuid
+from django.utils import timezone
 class Users(models.Model):
     id = models.UUIDField(primary_key=True,default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=128,null=True,blank=True)
@@ -169,4 +170,68 @@ class LigneVente(models.Model):
     class Meta:
         db_table = "lignes_vente"
 
+class Panier(models.Model):
+    user = models.OneToOneField(Users,on_delete=models.CASCADE,related_name="panier")
+    created_at = models.DateTimeField(auto_now_add=True)
+    update_at = models.DateTimeField(auto_now=True)
 
+    def total(self):
+        return sum(item.sous_total() for item in self.items.all())
+    
+    def vider(self):
+        self.items.all().delete()
+    class Meta:
+        db_table = "panier"
+
+class PanierItem(models.Model):
+    panier = models.ForeignKey(Panier,on_delete=models.CASCADE,related_name="items")
+    annonce = models.ForeignKey(Annonce,on_delete=models.CASCADE,related_name="panier_items")
+    quantite = models.PositiveIntegerField(default=1)
+    add_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("panier","annonce")
+
+    def sous_total(self):
+        return self.annonce.prix * self.quantite
+    
+    class Meta:
+        db_table = "panier_item"
+    
+class Order(models.Model):
+    class Statut(models.TextChoices):
+        EN_ATTENTE = "en_attente", "En attente"
+        CONFIRMEE = "confirmee", "Confirmé"
+        ANNULEE = "annulee", "Annulée"
+    user = models.ForeignKey(Users,on_delete=models.CASCADE,related_name="orders")
+    statut = models.CharField(max_length=20,choices=Statut.choices, default=Statut.EN_ATTENTE)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirme_le = models.DateTimeField(null=True,blank=True)
+    
+    def confirmer(self):
+        if self.statut == self.Statut.CONFIRMEE:
+            return
+        self.statut = self.Statut.CONFIRMEE
+        self.confirme_le = timezone.now()
+        self.save()
+        try:
+            self.user.panier.vider()
+        except Panier.DoesNotExist:
+            pass
+
+    class Meta:
+        db_table = "order"
+
+class OrderItems(models.Model):
+    order = models.ForeignKey(Order,on_delete=models.CASCADE,related_name='items')
+    annonce = models.ForeignKey(Annonce,on_delete=models.SET_NULL,null=True,related_name="order_items")
+    titre = models.CharField(max_length=255)
+    prix = models.DecimalField(max_digits=12,decimal_places=2)
+    quantite = models.PositiveIntegerField()
+
+    def sous_total(self):
+        return self.prix * self.quantite
+    
+    class Meta:
+        db_table = "order_item"

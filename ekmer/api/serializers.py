@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Livreur, Users,Categorie, LowCategorie, ImageAnnonce, Annonce, Vente, LigneVente
+from .models import Livreur, Users,Categorie, LowCategorie, ImageAnnonce, Annonce, Vente, LigneVente,PanierItem,Panier,OrderItems,Order
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -65,7 +65,6 @@ class LivreurSerializer(serializers.ModelSerializer):
 class LigneVenteSerializer(serializers.ModelSerializer):
     annonce_titre = serializers.CharField(source='annonce.titre',read_only=True)
     prix_unitaire = serializers.IntegerField(read_only=True)
-    # vendeur_nom = serializers.CharField(source='annonce.vendeur.username',read_only=True)
     class Meta:
         model = LigneVente
         fields = [
@@ -75,6 +74,24 @@ class LigneVenteSerializer(serializers.ModelSerializer):
             'quantite',
             'prix_unitaire',
         ]
+
+class LigneDetailVenteSerializer(serializers.ModelSerializer):
+    annonce_titre = serializers.CharField(source='annonce.titre',read_only=True)
+    annonce_image = serializers.ImageField(source='annonce.image',read_only=True)
+    annonce_qte = serializers.IntegerField(source='annonce.qte',read_only=True)
+    prix_unitaire = serializers.IntegerField(read_only=True)
+    class Meta:
+        model = LigneVente
+        fields = [
+            'id',
+            'annonce',
+            'annonce_titre',
+            'annonce_image',
+            'annonce_qte',
+            'quantite',
+            'prix_unitaire',
+        ]
+
 class VenteDetailSerializer(serializers.ModelSerializer):
     lignes = LigneVenteSerializer(many=True,read_only=True)
 
@@ -121,3 +138,53 @@ class VenteSerializer(serializers.ModelSerializer):
         vente.prix_total = prix_total
         vente.save()
         return vente
+    
+class PanierItemSerializer(serializers.ModelSerializer):
+    annonce_titre = serializers.CharField(source="annonce.titre", read_only=True)
+    annonce_prix = serializers.DecimalField(source="annonce.prix", max_digits=12, decimal_places=2,read_only=True)
+    sous_total = serializers.SerializerMethodField()
+    annonce_image= serializers.ImageField(source="annonce.image",read_only=True)
+    annonce_vendeur = serializers.CharField(source="annonce.vendeur.username",read_only=True)
+    class Meta:
+        model = PanierItem
+        fields = ["id","annonce","annonce_titre","annonce_prix","annonce_image","annonce_vendeur","sous_total","quantite","add_at"]
+        read_only_fields = ["id","add_at"]
+
+    def get_sous_total(self,obj):
+        return obj.annonce.prix * obj.quantite
+        
+    def validate_quantite(self,value):
+        if value < 1:
+            raise serializers.ValidationError("La quantité doit être 1 au moins !")
+        return value
+        
+class PanierSerializer(serializers.ModelSerializer):
+    items = PanierItemSerializer(many=True,read_only=True)
+    total = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Panier
+        fields = ["id","user","items","total","created_at","update_at"]
+        read_only_fields = fields
+    
+    def get_total(self,obj):
+        return obj.total()
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    sous_total = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderItems
+        fields = ["id","annonce","titre","prix","quantite","sous_total"]
+        read_only_fields = fields
+
+    def get_sous_total(self,obj):
+        return obj.sous_total()
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True,read_only=True)
+
+    class Meta:
+        model = Order
+        fields =["id","user","statut","total","items","created_at","confirme_le"]
+        read_only_fields = ["id","user","total","items","created_at","confirme_le"]
