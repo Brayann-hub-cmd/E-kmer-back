@@ -86,7 +86,6 @@ class LoginWithPhoneAndPasswordView(APIView):
                 "is_active":user.is_active
             }
         })
-
     
 def verifier_token(request):
     auth_header = request.headers.get('Authorization')
