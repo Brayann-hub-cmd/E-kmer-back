@@ -234,4 +234,8 @@ class OrderItems(models.Model):
         return self.prix * self.quantite
     
     class Meta:
+
         db_table = "order_item"
+
+        db_table = "order_item"
+

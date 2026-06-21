@@ -86,7 +86,6 @@ class LoginWithPhoneAndPasswordView(APIView):
                 "is_active":user.is_active
             }
         })
-
     
 def verifier_token(request):
     auth_header = request.headers.get('Authorization')
@@ -140,12 +139,26 @@ class SignInWithEmailAndPassword(APIView):
         telephone = request.data.get('telephone')
         role = request.data.get('role','user')
 
-        if not email or not password or not telephone or not username:
+        if not email:
             return Response(
-                {"error":"l'adresse mail, le mot de passe, le numéro de télephone et le nom d'utilisateur sont des champs obligatoires."},
+                {"error":"L'adresse mail est un champ obligatoire."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+        if not password:
+            return Response(
+                {"error":"Le mot de passe est des champ obligatoire."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not telephone:
+            return Response(
+                {"error":"Le numéro de télephone est un champ obligatoire."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not username:
+            return Response(
+                {"error":"Le nom d'utilisateur est un champ obligatoire."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if Users.objects.filter(email=email).exists():
             return Response({
                 "error":"Un utilisateur utilise déjà cet adresse email."
