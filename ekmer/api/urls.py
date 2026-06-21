@@ -1,7 +1,11 @@
 from rest_framework.routers import DefaultRouter
 from .views import UserViewSet, LoginWithEmailAndPasswordView,ProfileView,SignInWithEmailAndPassword,LoginWithPhoneAndPasswordView
 from .categorie_views import CategorieViewSet,LowCategorieViewSet,SousCategorieParCategorieView
+
+from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce
+
 from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce,AnnonceByUser,AllAnnonces
+
 from .vente_views import VenteView,VenteDetailView,VentesVendeurView,AchatUtilisateurView,PanierView,PanierItemAddView,PanierItemDetailView,PanierViderView,OrderListCreateView,OrderConfirmerView
 from django.urls import path,include
 from django.conf.urls.static import static
@@ -32,4 +36,8 @@ urlpatterns = [
     path('panier/vider/',PanierViderView.as_view()),
     path('commandes/',OrderListCreateView.as_view()),
     path('commandes/<int:order_id>/confirmer/',OrderConfirmerView.as_view())
+
 ] 
+
+
+
