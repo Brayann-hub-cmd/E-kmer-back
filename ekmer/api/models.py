@@ -11,7 +11,7 @@ class Users(models.Model):
     role = models.CharField(max_length=64,null=True,blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True,editable=False,null=True)
-
+    photo_profil = models.ImageField(null=True,blank=True, upload_to="uploads/profils/")
     class Meta:
         db_table="users"
         ordering=['-created_at']
@@ -235,3 +235,14 @@ class OrderItems(models.Model):
     
     class Meta:
         db_table = "order_item"
+
+class Favoris(models.Model):
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="favoris")
+    annonce = models.ForeignKey(Annonce,on_delete=models.CASCADE,related_name='favoris')
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        db_table = "favoris"
+        constraints = [
+            models.UniqueConstraint(fields=['user','annonce'],name='unique_favoris')
+        ]
