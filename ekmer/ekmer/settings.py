@@ -151,3 +151,10 @@ SIMPLE_JWT = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR,'media')
+
+PAIEMENT_MODE = os.environ.get('PAIEMENT_MODE', 'simulation')
+ 
+CINETPAY_API_KEY = os.environ.get('CINETPAY_API_KEY', '')
+CINETPAY_SITE_ID = os.environ.get('CINETPAY_SITE_ID', '')
+CINETPAY_TRANSFER_LOGIN = os.environ.get('CINETPAY_TRANSFER_LOGIN', '')
+CINETPAY_TRANSFER_PASSWORD = os.environ.get('CINETPAY_TRANSFER_PASSWORD', '')

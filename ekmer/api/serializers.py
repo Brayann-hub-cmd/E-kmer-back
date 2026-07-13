@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Livreur, Users,Categorie, LowCategorie, ImageAnnonce, Annonce, Vente, LigneVente,PanierItem,Panier,OrderItems,Order,Favoris
+from .models import Livreur, Users,Categorie, LowCategorie, ImageAnnonce, Annonce, Vente, LigneVente,PanierItem,Panier,OrderItems,Order,Favoris,Livraison,Transaction
 from .utils import verifier_token
 class UserSerializer(serializers.ModelSerializer):
 
@@ -213,3 +213,131 @@ class ProfilePhotoSerializer(serializers.ModelSerializer):
         model = Users
         fields = ['photo_profil']
 
+from .serializers_livreur import LivreurSerializer
+
+class LivraisonSerializer(serializers.ModelSerializer):
+    livreur = LivreurSerializer(read_only=True)
+    statut_display = serializers.CharField(source='get_statut_display', read_only=True)
+    order_id = serializers.UUIDField(source='order.id', read_only=True)
+    montant_commande = serializers.DecimalField(
+        source='order.montant_total', max_digits=10, decimal_places=2, read_only=True
+    )
+
+    class Meta:
+        model = Livraison
+        fields = [
+            'id', 'order_id', 'montant_commande', 'livreur',
+            'ville_depart', 'ville_livraison',
+            'statut', 'statut_display',
+            'date_acceptation', 'date_livraison', 'date_confirmation',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+class LivraisonCreateSerializer(serializers.ModelSerializer):
+    livreur_id = serializers.UUIDField(write_only=True)
+
+    class Meta:
+        model = Livraison
+        fields = ['order', 'livreur_id', 'ville_livraison']
+
+    def validate_order(self, order):
+        if hasattr(order, 'livraison'):
+            raise serializers.ValidationError("Une livraison existe déjà pour cette commande.")
+        if order.statut_paiement != 'paye':
+            raise serializers.ValidationError("La commande doit être payée avant de choisir un livreur.")
+        return order
+
+    def validate(self, data):
+        from .models import Livreur, TrajetLivreur
+        livreur_id = data.get('livreur_id')
+        ville_livraison = data.get('ville_livraison')
+        try:
+            livreur = Livreur.objects.get(id=livreur_id, disponible=True)
+        except Livreur.DoesNotExist:
+            raise serializers.ValidationError({"livreur_id": "Livreur introuvable ou indisponible."})
+
+        # ville_depart calculée dans la vue et injectée dans validated_data avant save()
+        ville_depart = data.get('ville_depart')
+        trajet_existe = TrajetLivreur.objects.filter(
+            livreur=livreur, ville_depart=ville_depart,
+            ville_arrivee=ville_livraison, actif=True
+        ).exists()
+        if not trajet_existe:
+            raise serializers.ValidationError(
+                "Ce livreur ne dessert pas ce trajet."
+            )
+        data['livreur'] = livreur
+        data.pop('livreur_id')
+        return data
+
+    def create(self, validated_data):
+        validated_data['statut'] = 'en_attente_acceptation'
+        return Livraison.objects.create(**validated_data)
+
+class LivraisonReponseLivreurSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=['accepter', 'refuser'])
+
+    def validate(self, data):
+        livraison = self.instance
+        if livraison.statut != 'en_attente_acceptation':
+            raise serializers.ValidationError(
+                "Cette livraison n'est plus en attente d'acceptation."
+            )
+        return data
+
+    def save(self, **kwargs):
+        from django.utils import timezone
+        livraison = self.instance
+        if self.validated_data['action'] == 'accepter':
+            livraison.statut = 'acceptee'
+            livraison.date_acceptation = timezone.now()
+        else:
+            livraison.statut = 'refusee'
+            livraison.order.statut = 'annulee'
+            livraison.order.save()
+        livraison.save()
+        return livraison
+
+class LivraisonMarquerLivreeSerializer(serializers.Serializer):
+    def validate(self, data):
+        if self.instance.statut != 'acceptee':
+            raise serializers.ValidationError("La livraison doit être acceptée avant d'être marquée livrée.")
+        return data
+
+    def save(self, **kwargs):
+        from django.utils import timezone
+        livraison = self.instance
+        livraison.statut = 'livree_attente_confirmation'
+        livraison.date_livraison = timezone.now()
+        livraison.save()
+        return livraison
+
+class LivraisonConfirmationClientSerializer(serializers.Serializer):
+    def validate(self, data):
+        if self.instance.statut != 'livree_attente_confirmation':
+            raise serializers.ValidationError("Aucune livraison en attente de confirmation.")
+        return data
+
+    def save(self, **kwargs):
+        from django.utils import timezone
+        livraison = self.instance
+        livraison.statut = 'confirmee'
+        livraison.date_confirmation = timezone.now()
+        livraison.save()
+        livraison.order.statut = 'confirmee'
+        livraison.order.save()
+        return livraison
+    
+class TransactionSerializer(serializers.ModelSerializer):
+    type_display = serializers.CharField(source='get_type_transaction_display', read_only=True)
+    statut_display = serializers.CharField(source='get_statut_display', read_only=True)
+ 
+    class Meta:
+        model = Transaction
+        fields = [
+            'id', 'order', 'type_transaction', 'type_display',
+            'montant', 'operateur', 'numero_telephone',
+            'statut', 'statut_display', 'created_at',
+        ]
+        read_only_fields = fields
