@@ -7,7 +7,7 @@ python ekmer/manage.py migrate
 
 python ekmer/manage.py shell -c "
 import bcrypt
-from api.models import User
+from api.models import Users
 
 admins = '$ADMIN_ACCOUNTS'.split(';')
 for admin in admins:
@@ -17,7 +17,7 @@ for admin in admins:
     username, email, password, telephone = parts
     if not Users.objects.filter(email=email).exists():
         hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        User.objects.create(
+        Users.objects.create(
             username=username,
             email=email,
             telephone=telephone,
@@ -28,4 +28,5 @@ for admin in admins:
         print(f'Admin cree: {email}')
     else:
         print(f'Admin existe deja: {email}')
+"
 "
