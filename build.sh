@@ -15,7 +15,7 @@ for admin in admins:
     if len(parts) != 4:
         continue
     username, email, password, telephone = parts
-    if not User.objects.filter(email=email).exists():
+    if not Users.objects.filter(email=email).exists():
         hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         User.objects.create(
             username=username,
