@@ -1,12 +1,9 @@
 from rest_framework.routers import DefaultRouter
-from .views import UserViewSet, LoginWithEmailAndPasswordView,ProfileView,SignInWithEmailAndPassword,LoginWithPhoneAndPasswordView
+from .views import UserViewSet, LoginWithEmailAndPasswordView,ProfileView,SignInWithEmailAndPassword,LoginWithPhoneAndPasswordView,ProfilePhotoView
 from .categorie_views import CategorieViewSet,LowCategorieViewSet,SousCategorieParCategorieView
-
-from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce
-
 from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce,AnnonceByUser,AllAnnonces
-
 from .vente_views import VenteView,VenteDetailView,VentesVendeurView,AchatUtilisateurView,PanierView,PanierItemAddView,PanierItemDetailView,PanierViderView,OrderListCreateView,OrderConfirmerView
+from .favoris_views import FavorisView
 from django.urls import path,include
 from django.conf.urls.static import static
 from django.conf import settings
@@ -35,9 +32,8 @@ urlpatterns = [
     path('panier/items/<int:item_id>/',PanierItemDetailView.as_view()),
     path('panier/vider/',PanierViderView.as_view()),
     path('commandes/',OrderListCreateView.as_view()),
-    path('commandes/<int:order_id>/confirmer/',OrderConfirmerView.as_view())
-
+    path('commandes/<int:order_id>/confirmer/',OrderConfirmerView.as_view()),
+    path('favoris/',FavorisView.as_view(),name='favoris'),
+    path('favoris/<str:annonce_code>/',FavorisView.as_view(),name='favoris-delete'),
+    path('profil/photo',ProfilePhotoView.as_view(),name='profil-photo')
 ] 
-
-
-

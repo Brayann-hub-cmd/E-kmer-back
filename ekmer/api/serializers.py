@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .models import Livreur, Users,Categorie, LowCategorie, ImageAnnonce, Annonce, Vente, LigneVente,PanierItem,Panier,OrderItems,Order
-
+from .models import Livreur, Users,Categorie, LowCategorie, ImageAnnonce, Annonce, Vente, LigneVente,PanierItem,Panier,OrderItems,Order,Favoris
+from .utils import verifier_token
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -39,7 +39,7 @@ class AnnonceSerializer(serializers.ModelSerializer):
         required=False
     )
     vendeur = VendeurSerializer(read_only=True)
-
+    est_favori = serializers.SerializerMethodField()
     class Meta:
         model = Annonce
         fields = '__all__'
@@ -56,6 +56,15 @@ class AnnonceSerializer(serializers.ModelSerializer):
         if obj.image:
             return f"/media/annonces/{obj.image.name.split('/')[-1]}"
         return None
+    
+    def get_est_favori(self,obj):
+        request = self.context.get('request')
+        if not request:
+            return False
+        user, error = verifier_token(request)
+        if error or not user:
+            return False
+        return Favoris.objects.filter(user=user,annonce=obj).exists()
 
 class LivreurSerializer(serializers.ModelSerializer):
     class Meta:
@@ -100,6 +109,7 @@ class VenteDetailSerializer(serializers.ModelSerializer):
         fields = [
             'code','acheteur','prix_total','statut','mode_paiement','created_at','lignes'
         ]
+
 class VenteSerializer(serializers.ModelSerializer):
     lignes = LigneVenteSerializer(many=True)
     acheteur_nom = serializers.CharField(source='acheteur.username',read_only=True)
@@ -188,3 +198,18 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields =["id","user","statut","total","items","created_at","confirme_le"]
         read_only_fields = ["id","user","total","items","created_at","confirme_le"]
+
+class FavorisSerializer(serializers.ModelSerializer):
+    annonce_titre = serializers.CharField(source='annonce.titre', read_only=True)
+    annonce_prix = serializers.IntegerField(source='annonce.prix', read_only=True)
+    annonce_image = serializers.ImageField(source='annonce.image', read_only=True)
+    class Meta:
+        model = Favoris
+        fields = ['id','user','annonce','annonce_titre','annonce_prix','annonce_image','created_at']
+        read_only_fields = ['user','created_at']
+
+class ProfilePhotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Users
+        fields = ['photo_profil']
+

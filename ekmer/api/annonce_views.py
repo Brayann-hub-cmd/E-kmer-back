@@ -54,7 +54,7 @@ class AnnonceViewSet(viewsets.ModelViewSet):
 class AllAnnonces(APIView):
     def get(self,request):
         annonces = Annonce.objects.all()
-        serializer = AnnonceSerializer(annonces,many=True)
+        serializer = AnnonceSerializer(annonces,many=True,context={'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class AnnonceParSousCategorie(APIView):
@@ -65,7 +65,7 @@ class AnnonceParSousCategorie(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         annonces = Annonce.objects.filter(sous_categorie=low_categorie_code)
-        serializer = AnnonceSerializer(annonces,many=True)
+        serializer = AnnonceSerializer(annonces,many=True,context={'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class RechercherAnnonce(APIView):
@@ -98,5 +98,5 @@ class AnnonceByUser(APIView):
         request.user = auth
         user = request.user
         annonces = Annonce.objects.filter(vendeur=user)
-        serializer = AnnonceSerializer(annonces,many=True)
+        serializer = AnnonceSerializer(annonces,many=True,context={'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
