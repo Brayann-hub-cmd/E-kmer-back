@@ -29,4 +29,3 @@ for admin in admins:
     else:
         print(f'Admin existe deja: {email}')
 "
-"
