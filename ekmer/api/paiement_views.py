@@ -84,8 +84,19 @@ def webhook_callback(request):
         transaction.save()
 
         order = transaction.order
-        order.statut_paiement = 'paye'
-        order.save()
+
+        try:
+            order.confirmer()  # décrémente le stock + passe statut à CONFIRMEE
+            order.statut_paiement = 'paye'
+            order.save()
+        except ValueError as e:
+            # paiement réussi mais stock insuffisant -> cas à gérer
+            transaction.statut = 'echoue'
+            transaction.save()
+            order.statut_paiement = 'echoue'
+            order.statut = Order.Statut.ANNULEE
+            order.save()
+            # TODO: déclencher un remboursement CinetPay ici, ou notifier l'admin
     else:
         transaction.statut = 'echoue'
         transaction.save()

@@ -90,46 +90,47 @@ class LoginWithPhoneAndPasswordView(APIView):
 def verifier_token(request):
     auth_header = request.headers.get('Authorization')
     if not auth_header:
-        return None,"Token Manquant,connectez vous!"
+        return None, "Token Manquant, connectez vous!"
     if not auth_header.startswith('Bearer '):
         return None, "Format du token invalide"
     token = auth_header.split(' ')[1]
 
     try:
-        payload = jwt.decode(token,settings.SECRET_KEY,algorithms=['HS256'])
-        request.user = Users.objects.get(id=payload['id'])
-        return payload,None
-    except Exception as e:
-        return None,str(e)
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        user = Users.objects.get(id=payload['id'])
+        request.user = user
+        return user, None          
     except jwt.ExpiredSignatureError:
-        return None,"Token expiré, reconnectez vous ..."
+        return None, "Token expiré, reconnectez vous ..."
     except jwt.DecodeError:
-        return None,"Token invalide !"
+        return None, "Token invalide !"
     except Users.DoesNotExist:
         return None, "Utilisateur introuvable"
+    except Exception as e:
+        return None, str(e)
 class ProfileView(APIView):
-    def get(self,request):
-        payload,erreur = verifier_token(request=request)
+    def get(self, request):
+        user, erreur = verifier_token(request)
         if erreur:
             return Response(
-                {"error":erreur},
+                {"error": erreur},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        try:
-            user = Users.objects.get(id=payload['id'])
-        except Users.DoesNotExist:
+        return Response(UserSerializer(user).data)
+
+    def patch(self, request):
+        user, erreur = verifier_token(request)
+        if erreur:
             return Response(
-                {"error":"Utiliateur introuvable"},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": erreur},
+                status=status.HTTP_401_UNAUTHORIZED
             )
-        
-        return Response({
-            "id": str(user.id),
-            "email":user.email,
-            "username":user.username,
-            "telephone":user.telephone,
-            "role":user.role
-        })
+
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SignInWithEmailAndPassword(APIView):
     def post(self,request):

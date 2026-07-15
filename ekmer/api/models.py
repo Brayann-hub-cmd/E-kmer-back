@@ -2,19 +2,23 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 import uuid
 from django.utils import timezone
+
 class Users(models.Model):
-    id = models.UUIDField(primary_key=True,default=uuid.uuid4, editable=False)
-    username = models.CharField(max_length=128,null=True,blank=True)
-    telephone = models.CharField(max_length=13,null=True,blank=True)
-    email = models.EmailField(max_length=128,null=True,blank=True,unique=True)
-    password = models.CharField(max_length=128,null=True,blank=True)
-    role = models.CharField(max_length=64,null=True,blank=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    username = models.CharField(max_length=128, null=True, blank=True)
+    telephone = models.CharField(max_length=13, null=True, blank=True)
+    email = models.EmailField(max_length=128, null=True, blank=True, unique=True)
+    password = models.CharField(max_length=128, null=True, blank=True)
+    role = models.CharField(max_length=64, null=True, blank=True)
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True,editable=False,null=True)
-    photo_profil = models.ImageField(null=True,blank=True, upload_to="uploads/profils/")
+    photo_profil = models.ImageField(null=True, blank=True, upload_to="uploads/profils/")
+    nom_boutique = models.CharField(max_length=128, null=True, blank=True)
+    description_boutique = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, editable=False, null=True)
+
     class Meta:
-        db_table="users"
-        ordering=['-created_at']
+        db_table = "users"
+        ordering = ['-created_at']
 
 class Categorie(models.Model):
     code =  models.CharField(primary_key=True,max_length=10)
@@ -179,14 +183,18 @@ class Order(models.Model):
     statut_paiement = models.CharField(max_length=20,choices=StatutPaiement.choices, default=StatutPaiement.NON_PAYE)
     def confirmer(self):
         if self.statut == self.Statut.CONFIRMEE:
-            return
+            return  # évite de re-décrémenter si le webhook est appelé 2x
+
+        for item in self.items.select_related("annonce").all():
+            annonce = item.annonce
+            if annonce.qte < item.quantite:
+                # stock insuffisant, on ne peut pas confirmer
+                raise ValueError(f"Stock insuffisant pour {annonce.titre}")
+            annonce.qte -= item.quantite
+            annonce.save()
+
         self.statut = self.Statut.CONFIRMEE
-        self.confirme_le = timezone.now()
         self.save()
-        try:
-            self.user.panier.vider()
-        except Panier.DoesNotExist:
-            pass
 
     class Meta:
         db_table = "order"
@@ -218,13 +226,14 @@ class Favoris(models.Model):
 class Livreur(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(Users,on_delete=models.CASCADE,related_name='profil_livreur')
-    disponible = models.BooleanField(default=True),
+    disponible = models.BooleanField(default=True)
 
 class TrajetLivreur(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    livreur = models.ForeignKey(Livreur,on_delete=models.CASCADE,related_name='trajets')
+    livreur = models.ForeignKey(Livreur, on_delete=models.CASCADE, related_name='trajets')
     ville_depart = models.CharField(max_length=100)
     ville_arrivee = models.CharField(max_length=100)
+    tarif = models.IntegerField(default=0)
     actif = models.BooleanField(default=True)
 
 STATUS_LIVRAISON = [

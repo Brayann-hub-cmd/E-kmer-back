@@ -52,9 +52,9 @@ class AnnonceViewSet(viewsets.ModelViewSet):
         return Response(serializer.data,status=status.HTTP_201_CREATED)
 
 class AllAnnonces(APIView):
-    def get(self,request):
-        annonces = Annonce.objects.all()
-        serializer = AnnonceSerializer(annonces,many=True,context={'request':request})
+    def get(self, request):
+        annonces = Annonce.objects.select_related('sous_categorie__categorie', 'vendeur').all()
+        serializer = AnnonceSerializer(annonces, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class AnnonceParSousCategorie(APIView):

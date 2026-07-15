@@ -4,8 +4,8 @@ from .categorie_views import CategorieViewSet,LowCategorieViewSet,SousCategorieP
 from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce,AnnonceByUser,AllAnnonces
 from .vente_views import VenteView,VenteDetailView,VentesVendeurView,AchatUtilisateurView,PanierView,PanierItemAddView,PanierItemDetailView,PanierViderView,OrderListCreateView,OrderConfirmerView
 from .favoris_views import FavorisView
+from .livreurs_views import LivreurListView
 from django.urls import path,include
-from django.conf.urls.static import static
 from django.conf import settings
 from . import paiement_views
 router = DefaultRouter()
@@ -38,5 +38,6 @@ urlpatterns = [
     path('favoris/<str:annonce_code>/',FavorisView.as_view(),name='favoris-delete'),
     path('auth/profil/photo/',ProfilePhotoView.as_view(),name='profil-photo'),
     path('paiements/initier/', paiement_views.initier_paiement, name='initier-paiement'),
-    path('paiements/webhook/', paiement_views.webhook_callback, name='webhook-paiement')
+    path('paiements/webhook/', paiement_views.webhook_callback, name='webhook-paiement'),    
+    path('livreurs/', LivreurListView.as_view(), name='livreurs-list'),
 ] 
