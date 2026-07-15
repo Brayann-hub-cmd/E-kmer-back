@@ -87,42 +87,6 @@ class ImageAnnonce(models.Model):
     image = models.ImageField(null=False,blank=False,upload_to="uploads/annonces/")
     produit = models.ForeignKey(Annonce,on_delete=models.CASCADE,related_name="images")
 
-class Livreur(models.Model):
-    idLivreur = models.UUIDField(primary_key=True,default=uuid.uuid4, editable=False)
-
-    STATUT_CHOICES = [
-        ('disponible', 'Disponible'),
-        ('occupe', 'Occupé'),
-        ('offline', 'Hors ligne'),
-    ]
-
-    VEHICULE_CHOICES = [
-        ('moto', 'Moto'),
-        ('voiture', 'Voiture'),
-        ('velo', 'Vélo'),
-        ('camion', 'Camion'),
-    ]
-
-    user = models.OneToOneField(
-        Users,
-        on_delete=models.CASCADE,
-        related_name='livreur'
-    )
-
-    telephone = models.CharField(max_length=20, unique=True)
-    numero_permis = models.CharField(max_length=50, blank=True, null=True)
-    type_vehicule = models.CharField(max_length=20, choices=VEHICULE_CHOICES)
-    plaque_immatriculation = models.CharField(max_length=20, blank=True, null=True)
-    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='offline')
-    actif = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "livreurs"    
-    
-    def __str__(self):
-        return f"{self.user.username} - {self.type_vehicule}"
-
 class Vente(models.Model):
     code = models.CharField(primary_key=True, max_length=17)
     acheteur = models.ForeignKey(Users,on_delete=models.CASCADE,related_name='achats')
@@ -203,12 +167,16 @@ class Order(models.Model):
         EN_ATTENTE = "en_attente", "En attente"
         CONFIRMEE = "confirmee", "Confirmé"
         ANNULEE = "annulee", "Annulée"
+    class StatutPaiement(models.TextChoices):
+        NON_PAYE = 'non_paye','Non payé'
+        PAYE = 'paye','Payé'
+        REMBOURSE = 'rembourse','Rembourse'
     user = models.ForeignKey(Users,on_delete=models.CASCADE,related_name="orders")
     statut = models.CharField(max_length=20,choices=Statut.choices, default=Statut.EN_ATTENTE)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     confirme_le = models.DateTimeField(null=True,blank=True)
-    
+    statut_paiement = models.CharField(max_length=20,choices=StatutPaiement.choices, default=StatutPaiement.NON_PAYE)
     def confirmer(self):
         if self.statut == self.Statut.CONFIRMEE:
             return
@@ -246,3 +214,58 @@ class Favoris(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['user','annonce'],name='unique_favoris')
         ]
+
+class Livreur(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(Users,on_delete=models.CASCADE,related_name='profil_livreur')
+    disponible = models.BooleanField(default=True),
+
+class TrajetLivreur(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    livreur = models.ForeignKey(Livreur,on_delete=models.CASCADE,related_name='trajets')
+    ville_depart = models.CharField(max_length=100)
+    ville_arrivee = models.CharField(max_length=100)
+    actif = models.BooleanField(default=True)
+
+STATUS_LIVRAISON = [
+    ('en_attente_selection', 'En attente sélection livreur'),
+    ('en_attente_acceptation','EN attente acceptation livreur'),
+    ('acceptee','Acceptée'),
+    ('refusee','Refusée'),
+    ('en_cours','En cours de livraison'),
+    ('livree_attente_confirmation','Livrée - attente confirmation client'),
+    ('confirmee','Confirmée'),
+    ('annulee','Annulée')
+]
+
+class Livraison:
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.OneToOneField(Order,on_delete=models.CASCADE,related_name='livraison')
+    livreur = models.ForeignKey(Livreur,on_delete=models.SET_NULL,null=True,blank=True)
+    ville_depart = models.CharField(max_length=100)
+    ville_livraison = models.CharField(max_length=100)
+    statut = models.CharField(max_length=30, choices=STATUS_LIVRAISON, default='en_attente_selection')
+    date_acceptation = models.DateTimeField(null=True,blank=True)
+    date_livraison = models.DateTimeField(null=True,blank=True)
+    date_confirmation = models.DateTimeField(null=True,blank=True)
+    created_at =models.DateTimeField(auto_now_add=True)
+
+TYPE_TRANSACTION = [('paiement', 'Paiement'), ('remboursement', 'Remboursement')]
+STATUT_TRANSACTION = [('en_attente', 'En attente'), ('reussi', 'Réussi'), ('echoue', 'Échoué')]
+
+class Transaction(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='transactions')
+    type_transaction = models.CharField(max_length=20, choices=TYPE_TRANSACTION)
+    montant = models.DecimalField(max_digits=10, decimal_places=2)
+    operateur = models.CharField(max_length=20, blank=True)  # 'OM', 'MOMO'...
+    numero_telephone = models.CharField(max_length=20, blank=True)
+    cinetpay_transaction_id = models.CharField(max_length=100, unique=True)  # notre ID envoyé à CinetPay
+    payment_token = models.CharField(max_length=255, blank=True)  # retourné par CinetPay (paiement uniquement)
+    statut = models.CharField(max_length=20, choices=STATUT_TRANSACTION, default='en_attente')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+ 
+    def __str__(self):
+        return f"{self.type_transaction} - {self.cinetpay_transaction_id} - {self.statut}"
+

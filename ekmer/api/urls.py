@@ -7,6 +7,7 @@ from .favoris_views import FavorisView
 from django.urls import path,include
 from django.conf.urls.static import static
 from django.conf import settings
+from . import paiement_views
 router = DefaultRouter()
 router.register('users',UserViewSet)
 router.register('categories',CategorieViewSet)
@@ -35,5 +36,7 @@ urlpatterns = [
     path('commandes/<int:order_id>/confirmer/',OrderConfirmerView.as_view()),
     path('favoris/',FavorisView.as_view(),name='favoris'),
     path('favoris/<str:annonce_code>/',FavorisView.as_view(),name='favoris-delete'),
-    path('profil/photo',ProfilePhotoView.as_view(),name='profil-photo')
+    path('auth/profil/photo/',ProfilePhotoView.as_view(),name='profil-photo'),
+    path('paiements/initier/', paiement_views.initier_paiement, name='initier-paiement'),
+    path('paiements/webhook/', paiement_views.webhook_callback, name='webhook-paiement')
 ] 

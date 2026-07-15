@@ -1,0 +1,128 @@
+import uuid
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+
+from .utils import verifier_token 
+from .models import Transaction
+from .utils import CinetPayClient, CinetPayError
+from .models import Order
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def initier_paiement(request):
+    payload = verifier_token(request)
+    if not payload:
+        return Response({"erreur": "Non authentifié"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    order_id = request.data.get('order_id')
+    order = get_object_or_404(Order, id=order_id, client_id=payload['user_id'])
+
+    if order.statut_paiement == 'paye':
+        return Response({"erreur": "Cette commande est déjà payée"}, status=status.HTTP_400_BAD_REQUEST)
+
+    cinetpay_transaction_id = f"EKMER{uuid.uuid4().hex[:16].upper()}"
+
+    transaction = Transaction.objects.create(
+        order=order,
+        type_transaction='paiement',
+        montant=order.montant_total,
+        cinetpay_transaction_id=cinetpay_transaction_id,
+        statut='en_attente',
+    )
+
+    client_data = {
+        "nom": order.client.first_name,
+        "prenom": order.client.last_name,
+        "telephone": order.client.telephone,
+        "email": order.client.email,
+        "ville": order.livraison.ville_livraison if hasattr(order, 'livraison') else "Douala",
+    }
+
+    try:
+        cinetpay_client = CinetPayClient()
+        resultat = cinetpay_client.initier_paiement(
+            transaction_id=cinetpay_transaction_id,
+            montant=order.montant_total,
+            description=f"Paiement commande E-KMER #{order.id}",
+            client=client_data,
+            notify_url="https://tondomaine.com/api/paiements/webhook/",
+            return_url="https://tondomaine.com/paiement/retour",
+        )
+        transaction.payment_token = resultat['payment_token']
+        transaction.save()
+    except CinetPayError as e:
+        transaction.statut = 'echoue'
+        transaction.save()
+        return Response({"erreur": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+    return Response({
+        "payment_url": resultat['payment_url'],
+        "transaction_id": cinetpay_transaction_id,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def webhook_callback(request):
+
+    cinetpay_transaction_id = request.data.get('cpm_trans_id') or request.data.get('transaction_id')
+    if not cinetpay_transaction_id:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    transaction = get_object_or_404(Transaction, cinetpay_transaction_id=cinetpay_transaction_id)
+
+    cinetpay_client = CinetPayClient()
+    verification = cinetpay_client.verifier_paiement(cinetpay_transaction_id)
+
+    if verification.get('code') == '00' and verification['data']['status'] == 'ACCEPTED':
+        transaction.statut = 'reussi'
+        transaction.operateur = verification['data'].get('payment_method', '')
+        transaction.save()
+
+        order = transaction.order
+        order.statut_paiement = 'paye'
+        order.save()
+    else:
+        transaction.statut = 'echoue'
+        transaction.save()
+
+    return Response(status=status.HTTP_200_OK)
+
+
+def declencher_remboursement(order):
+    transaction_paiement = order.transactions.filter(
+        type_transaction='paiement', statut='reussi'
+    ).first()
+    if not transaction_paiement:
+        return None
+
+    client_transaction_id = f"REMB{uuid.uuid4().hex[:16].upper()}"
+
+    transaction_remboursement = Transaction.objects.create(
+        order=order,
+        type_transaction='remboursement',
+        montant=transaction_paiement.montant,
+        numero_telephone=order.client.telephone,
+        cinetpay_transaction_id=client_transaction_id,
+        statut='en_attente',
+    )
+
+    try:
+        cinetpay_client = CinetPayClient()
+        resultat = cinetpay_client.initier_remboursement(
+            client_transaction_id=client_transaction_id,
+            montant=transaction_paiement.montant,
+            numero_telephone=order.client.telephone,
+            notify_url="https://tondomaine.com/api/paiements/webhook-transfert/",
+        )
+        transaction_remboursement.statut = 'en_attente'
+        transaction_remboursement.save()
+        return resultat
+    except CinetPayError as e:
+        transaction_remboursement.statut = 'echoue'
+        transaction_remboursement.save()
+        raise
