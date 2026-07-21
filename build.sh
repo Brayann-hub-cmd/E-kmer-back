@@ -12,14 +12,18 @@ for admin in admins:
     if len(parts) != 4:
         continue
     username, email, password, telephone = parts
-    Users.objects.filter(email=email).delete()
-    Users.objects.create(
-        username=username,
+    user, created = Users.objects.get_or_create(
         email=email,
-        telephone=telephone,
-        password=password,
-        role='admin',
-        is_active=True
+        defaults={
+            'username': username,
+            'telephone': telephone,
+            'password': password,
+            'role': 'admin',
+            'is_active': True
+        }
     )
-    print(f'Admin recree: {email}')
+    if created:
+        print(f'Admin cree: {email}')
+    else:
+        print(f'Admin deja existant, aucune modification: {email}')
 "
