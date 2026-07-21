@@ -28,7 +28,7 @@ class ImagesAnnonceSerializer(serializers.ModelSerializer):
 class VendeurSerializer(serializers.ModelSerializer):
     class Meta:
         model = Users
-        fields = ['id','username','created_at']
+        fields = ['id','username','created_at','photo_profil']
 
 class AnnonceSerializer(serializers.ModelSerializer):
     code = serializers.CharField(read_only=True)
