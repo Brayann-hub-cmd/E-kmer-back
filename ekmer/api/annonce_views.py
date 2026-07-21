@@ -39,22 +39,18 @@ class AnnonceViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
 
     def create(self, request, *args, **kwargs):
-        payload, erreur = verifier_token(request)
+        user, erreur = verifier_token(request)
         if erreur:
-            return Response({"error":erreur},status=status.HTTP_401_UNAUTHORIZED)
-        try:
-            user = Users.objects.get(id=payload['id'])
-        except Users.DoesNotExist:
-            return Response({"error":"Utilisateur introuvable"},status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": erreur}, status=status.HTTP_401_UNAUTHORIZED)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(vendeur=user)
-        return Response(serializer.data,status=status.HTTP_201_CREATED)
-
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
 class AllAnnonces(APIView):
-    def get(self,request):
-        annonces = Annonce.objects.all()
-        serializer = AnnonceSerializer(annonces,many=True,context={'request':request})
+    def get(self, request):
+        annonces = Annonce.objects.select_related('sous_categorie__categorie', 'vendeur').all()
+        serializer = AnnonceSerializer(annonces, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class AnnonceParSousCategorie(APIView):

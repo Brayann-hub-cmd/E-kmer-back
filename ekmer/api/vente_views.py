@@ -2,8 +2,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
-from .permissions import AnnoncePermission
-from .serializers import VenteSerializer,VenteDetailSerializer,LigneVenteSerializer,LigneDetailVenteSerializer,PanierSerializer,PanierItemSerializer,OrderSerializer
 from .serializers import VenteSerializer,VenteDetailSerializer,LigneDetailVenteSerializer,PanierSerializer,PanierItemSerializer,OrderSerializer
 from .models import Vente, Users, Annonce,Panier,PanierItem,Order,OrderItems
 from django.conf import settings
@@ -201,26 +199,37 @@ class PanierItemAddView(APIView):
         return Response(PanierItemSerializer(item).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
     
 class PanierItemDetailView(APIView):
-    def patch(self,request, item_id):
-        auth,error = verify(request)
+    def patch(self, request, item_id):
+        auth, error = verify(request)
         if error:
-            return Response(
-                {'error':error},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({'error': error}, status=status.HTTP_401_UNAUTHORIZED)
         request.user = auth
         user = request.user
         try:
             panier = Panier.objects.get(user=user)
-            item = PanierItem.objects.get(id=item_id,panier=panier)
-        except (Panier.DoesNotExist , PanierItem.DoesNotExist):
-            return Response({"error":"Introuvable"},status=status.HTTP_404_NOT_FOUND)
+            item = PanierItem.objects.get(id=item_id, panier=panier)
+        except (Panier.DoesNotExist, PanierItem.DoesNotExist):
+            return Response({"error": "Introuvable"}, status=status.HTTP_404_NOT_FOUND)
         quantite = request.data.get("quantite")
-        if not quantite or int(quantite)<1:
-            return Response({"error":"Quantité invalide !"},status=status.HTTP_400_BAD_REQUEST)
+        if not quantite or int(quantite) < 1:
+            return Response({"error": "Quantité invalide !"}, status=status.HTTP_400_BAD_REQUEST)
         item.quantite = int(quantite)
         item.save()
         return Response(PanierItemSerializer(item).data)
+
+    def delete(self, request, item_id):
+        auth, error = verify(request)
+        if error:
+            return Response({'error': error}, status=status.HTTP_401_UNAUTHORIZED)
+        request.user = auth
+        user = request.user
+        try:
+            panier = Panier.objects.get(user=user)
+            item = PanierItem.objects.get(id=item_id, panier=panier)
+        except (Panier.DoesNotExist, PanierItem.DoesNotExist):
+            return Response({"error": "Introuvable"}, status=status.HTTP_404_NOT_FOUND)
+        item.delete()
+        return Response({"message": "Article retiré du panier."}, status=status.HTTP_204_NO_CONTENT)
 
 class PanierViderView(APIView):    
     def delete(self,request):
@@ -251,30 +260,33 @@ class OrderListCreateView(APIView):
         orders = Order.objects.filter(user=user).order_by("-created_at")
         return Response(OrderSerializer(orders,many=True).data)
   
-    def post(self,request):
-        auth,error = verify(request)
+    def post(self, request):
+        auth, error = verify(request)
         if error:
-            return Response(
-                {'error':error},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({'error': error}, status=status.HTTP_401_UNAUTHORIZED)
         request.user = auth
         user = request.user
+
         try:
             panier = user.panier
         except Panier.DoesNotExist:
-            return Response({"error":"Panier Introuvable"},status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Panier Introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
         items = panier.items.select_related("annonce").all()
         if not items.exists():
-            return Response({"error":"Le panier est vide."},status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Le panier est vide."}, status=status.HTTP_400_BAD_REQUEST)
+
         total = sum(item.sous_total() for item in items)
-        order = Order.objects.create(user=user,total=total)
+        order = Order.objects.create(user=user, total=total)
         OrderItems.objects.bulk_create([
             OrderItems(
-                order = order, annonce = item.annonce, titre = item.annonce.titre, prix = item.annonce.prix, quantite = item.quantite
+                order=order, annonce=item.annonce, titre=item.annonce.titre,
+                prix=item.annonce.prix, quantite=item.quantite
             ) for item in items
         ])
-        return Response(OrderSerializer(order).data,status=status.HTTP_201_CREATED)
+        items.delete()
+
+        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
     
 class OrderConfirmerView(APIView):
     def post(self,request,order_id):
@@ -292,3 +304,20 @@ class OrderConfirmerView(APIView):
         order.confirmer()
         return Response(OrderSerializer(order).data)
     
+class WebhookCinetPayView(APIView):
+    def post(self, request):
+        transaction_id = request.data.get('cpm_trans_id')
+        statut_paiement = request.data.get('cpm_result')
+        order = get_object_or_404(Order, id=transaction_id)
+        if statut_paiement == "00":
+            try:
+                order.confirmer()
+            except ValueError as e:
+                order.statut = Order.Statut.ANNULEE
+                order.save()
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            order.statut = Order.Statut.ANNULEE
+            order.save()
+        return Response(status=status.HTTP_200_OK)         
+        

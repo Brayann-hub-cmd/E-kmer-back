@@ -131,8 +131,11 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
@@ -153,3 +156,23 @@ CINETPAY_API_KEY = os.environ.get('CINETPAY_API_KEY', '')
 CINETPAY_SITE_ID = os.environ.get('CINETPAY_SITE_ID', '')
 CINETPAY_TRANSFER_LOGIN = os.environ.get('CINETPAY_TRANSFER_LOGIN', '')
 CINETPAY_TRANSFER_PASSWORD = os.environ.get('CINETPAY_TRANSFER_PASSWORD', '')
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'ERROR',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
