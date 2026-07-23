@@ -96,3 +96,33 @@ class AnnonceByUser(APIView):
         annonces = Annonce.objects.filter(vendeur=user)
         serializer = AnnonceSerializer(annonces,many=True,context={'request':request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class SuspendreAnnonceView(APIView):
+    def patch(self, request, code):
+        user, erreur = verifier_token(request)
+        if erreur:
+            return Response({"error": erreur}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if user.role != "admin":
+            return Response(
+                {"error": "Accès réservé aux administrateurs"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            annonce = Annonce.objects.get(code=code)
+        except Annonce.DoesNotExist:
+            return Response({"error": "Annonce introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+        nouveau_statut = request.data.get("statut")
+        statuts_valides = ["Disponible", "Suspendu"]
+        if nouveau_statut not in statuts_valides:
+            return Response(
+                {"error": f"Statut invalide. Valeurs acceptées : {', '.join(statuts_valides)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        annonce.statut = nouveau_statut
+        annonce.save()
+        serializer = AnnonceSerializer(annonce, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)

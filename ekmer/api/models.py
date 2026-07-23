@@ -25,11 +25,9 @@ class Categorie(models.Model):
     nom = models.CharField(max_length=100,null=False,blank=False)
     def save(self,*args,**kwargs):
         if not self.code:
-            last = Categorie.objects.all().order_by('code').last()
-            if last:
-                number = int(last.code.replace('Cat_','')) + 1
-            else:
-                number = 1
+            codes = Categorie.objects.filter(code__startswith='Cat_').values_list('code', flat=True)
+            numbers = [int(c.replace('Cat_', '')) for c in codes if c.replace('Cat_', '').isdigit()]
+            number = max(numbers) + 1 if numbers else 1
             self.code = f"Cat_{number}"
         super().save(*args,**kwargs)
     
@@ -42,11 +40,9 @@ class LowCategorie(models.Model):
     categorie = models.ForeignKey(Categorie,on_delete=models.CASCADE,related_name="sous_categories")
     def save(self,*args,**kwargs):
         if not self.code:
-            last = LowCategorie.objects.all().order_by('code').last()
-            if last:
-                number = int(last.code.replace('S_C_','')) + 1
-            else:
-                number = 1
+            codes = LowCategorie.objects.filter(code__startswith='S_C_').values_list('code', flat=True)
+            numbers = [int(c.replace('S_C_', '')) for c in codes if c.replace('S_C_', '').isdigit()]
+            number = max(numbers) + 1 if numbers else 1
             self.code = f"S_C_{number}"
         super().save(*args,**kwargs)
     
@@ -227,6 +223,10 @@ class Livreur(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(Users,on_delete=models.CASCADE,related_name='profil_livreur')
     disponible = models.BooleanField(default=True)
+    is_validated = models.BooleanField(default=False)
+    type_vehicule = models.CharField(max_length=32, null=True, blank=True)
+    num_permis = models.CharField(max_length=64, null=True, blank=True)
+    num_plaque = models.CharField(max_length=32, null=True, blank=True)
 
 class TrajetLivreur(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

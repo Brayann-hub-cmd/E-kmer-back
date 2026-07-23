@@ -1,10 +1,10 @@
 from rest_framework.routers import DefaultRouter
 from .views import UserViewSet, LoginWithEmailAndPasswordView,ProfileView,SignInWithEmailAndPassword,LoginWithPhoneAndPasswordView,ProfilePhotoView
 from .categorie_views import CategorieViewSet,LowCategorieViewSet,SousCategorieParCategorieView
-from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce,AnnonceByUser,AllAnnonces
+from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce,AnnonceByUser,AllAnnonces,SuspendreAnnonceView
 from .vente_views import VenteView,VenteDetailView,VentesVendeurView,AchatUtilisateurView,PanierView,PanierItemAddView,PanierItemDetailView,PanierViderView,OrderListCreateView,OrderConfirmerView
 from .favoris_views import FavorisView
-from .livreurs_views import LivreurListView
+from .livreurs_views import LivreurListView, LivreurUpdateView, LivreurValiderView
 from django.urls import path,include
 from django.conf import settings
 from . import paiement_views
@@ -14,6 +14,7 @@ router.register('categories',CategorieViewSet)
 router.register('sous_categories',LowCategorieViewSet)
 router.register('annonces',AnnonceViewSet,basename='annonce')
 urlpatterns = [
+    path('annonces/',AllAnnonces.as_view(),name='annonces'),   # ← déplacé avant le router
     path('',include(router.urls)),
     path('auth/login/',LoginWithEmailAndPasswordView.as_view(),name='login'),
     path('auth/login/tel',LoginWithPhoneAndPasswordView.as_view(),name='logintel'),
@@ -22,7 +23,6 @@ urlpatterns = [
     path('low_categories/<str:categorie_code>/sous_categories/',SousCategorieParCategorieView.as_view()),
     path('all_annonces/<str:low_categorie_code>/annonces/',AnnonceParSousCategorie.as_view()),
     path('annonce/search/',RechercherAnnonce.as_view(),name='recherche-annonce'),
-    path('annonces/',AllAnnonces.as_view(),name='annonces'),
     path('annonces-user/',AnnonceByUser.as_view(),name='annonces-by-user'),
     path('ventes/',VenteView.as_view(),name='ventes'),
     path('ventes/vendeur/',VentesVendeurView.as_view(),name="ventes-user"),
@@ -38,6 +38,9 @@ urlpatterns = [
     path('favoris/<str:annonce_code>/',FavorisView.as_view(),name='favoris-delete'),
     path('auth/profil/photo/',ProfilePhotoView.as_view(),name='profil-photo'),
     path('paiements/initier/', paiement_views.initier_paiement, name='initier-paiement'),
-    path('paiements/webhook/', paiement_views.webhook_callback, name='webhook-paiement'),    
+    path('paiements/webhook/', paiement_views.webhook_callback, name='webhook-paiement'),
     path('livreurs/', LivreurListView.as_view(), name='livreurs-list'),
-] 
+    path('annonces/<str:code>/statut/', SuspendreAnnonceView.as_view(), name='annonce-suspendre'),
+    path('livreurs/<uuid:id>/valider/', LivreurValiderView.as_view(), name='livreur-valider'),
+    path('livreurs/<uuid:id>/', LivreurUpdateView.as_view(), name='livreur-update'),
+]
