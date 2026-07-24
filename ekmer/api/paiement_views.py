@@ -6,8 +6,8 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from .utils import verifier_token, get_payment_client, CinetPayError
-from .models import Transaction
-from .models import Order
+from .models import Transaction, Order, Livraison
+from django.core.exceptions import ObjectDoesNotExist
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -74,6 +74,13 @@ def webhook_callback(request):
             order.confirmer()  # décrémente le stock + passe statut à CONFIRMEE
             order.statut_paiement = 'paye'
             order.save()
+            try:
+                livraison = order.livraison
+            except (Livraison.DoesNotExist, ObjectDoesNotExist):
+                livraison = None
+            if livraison and livraison.statut == 'en_attente_selection':
+                livraison.statut = 'en_attente_acceptation'
+                livraison.save()
         except ValueError as e:
             # paiement réussi mais stock insuffisant -> cas à gérer
             transaction.statut = 'echoue'

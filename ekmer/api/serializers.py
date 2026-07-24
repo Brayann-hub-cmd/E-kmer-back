@@ -246,8 +246,8 @@ class LivraisonCreateSerializer(serializers.ModelSerializer):
     def validate_order(self, order):
         if hasattr(order, 'livraison'):
             raise serializers.ValidationError("Une livraison existe déjà pour cette commande.")
-        if order.statut_paiement != 'paye':
-            raise serializers.ValidationError("La commande doit être payée avant de choisir un livreur.")
+        if order.statut_paiement == 'echoue':
+            raise serializers.ValidationError("La commande ne peut pas être livrée si le paiement a échoué.")
         return order
 
     def validate(self, data):
@@ -274,7 +274,7 @@ class LivraisonCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        validated_data['statut'] = 'en_attente_acceptation'
+        validated_data['statut'] = 'en_attente_acceptation' if validated_data['order'].statut_paiement == 'paye' else 'en_attente_selection'
         return Livraison.objects.create(**validated_data)
 
 class LivraisonReponseLivreurSerializer(serializers.Serializer):

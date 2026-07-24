@@ -1,9 +1,10 @@
+from decimal import Decimal
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
-from .serializers import VenteSerializer,VenteDetailSerializer,LigneDetailVenteSerializer,PanierSerializer,PanierItemSerializer,OrderSerializer
-from .models import Vente, Users, Annonce,Panier,PanierItem,Order,OrderItems
+from .serializers import VenteSerializer,VenteDetailSerializer,LigneDetailVenteSerializer,PanierSerializer,PanierItemSerializer,OrderSerializer, LivraisonCreateSerializer
+from .models import Vente, Users, Annonce,Panier,PanierItem,Order,OrderItems, Livraison, Livreur
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 import jwt
@@ -277,6 +278,10 @@ class OrderListCreateView(APIView):
             return Response({"error": "Le panier est vide."}, status=status.HTTP_400_BAD_REQUEST)
 
         total = sum(item.sous_total() for item in items)
+        livraison_data = request.data.get('livraison')
+        if livraison_data and livraison_data.get('modeLivraison') == 'domicile':
+            total += Decimal(str(livraison_data.get('fraisTotal', 0)))
+
         order = Order.objects.create(user=user, total=total)
         OrderItems.objects.bulk_create([
             OrderItems(
@@ -284,8 +289,22 @@ class OrderListCreateView(APIView):
                 prix=item.annonce.prix, quantite=item.quantite
             ) for item in items
         ])
-        items.delete()
 
+        if livraison_data and livraison_data.get('modeLivraison') == 'domicile':
+            livraison_payload = {
+                'order': order.id,
+                'livreur_id': livraison_data.get('livreur_id'),
+                'ville_depart': livraison_data.get('ville_depart'),
+                'ville_livraison': livraison_data.get('ville_livraison'),
+            }
+            livraison_serializer = LivraisonCreateSerializer(data=livraison_payload)
+            if livraison_serializer.is_valid():
+                livraison_serializer.save()
+            else:
+                order.delete()
+                return Response(livraison_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        items.delete()
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
     
 class OrderConfirmerView(APIView):
