@@ -148,19 +148,17 @@ class Panier(models.Model):
         db_table = "panier"
 
 class PanierItem(models.Model):
-    panier = models.ForeignKey(Panier,on_delete=models.CASCADE,related_name="items")
-    annonce = models.ForeignKey(Annonce,on_delete=models.CASCADE,related_name="panier_items")
+    panier = models.ForeignKey(Panier, on_delete=models.CASCADE, related_name="items")
+    annonce = models.ForeignKey(Annonce, on_delete=models.CASCADE, related_name="panier_items")
     quantite = models.PositiveIntegerField(default=1)
     add_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        unique_together = ("panier","annonce")
-
     def sous_total(self):
         return self.annonce.prix * self.quantite
-    
+
     class Meta:
         db_table = "panier_item"
+        unique_together = ("panier", "annonce")
     
 class Order(models.Model):
     class Statut(models.TextChoices):
@@ -247,17 +245,20 @@ STATUS_LIVRAISON = [
     ('annulee','Annulée')
 ]
 
-class Livraison:
+class Livraison(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    order = models.OneToOneField(Order,on_delete=models.CASCADE,related_name='livraison')
-    livreur = models.ForeignKey(Livreur,on_delete=models.SET_NULL,null=True,blank=True)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='livraison')
+    livreur = models.ForeignKey(Livreur, on_delete=models.SET_NULL, null=True, blank=True)
     ville_depart = models.CharField(max_length=100)
     ville_livraison = models.CharField(max_length=100)
     statut = models.CharField(max_length=30, choices=STATUS_LIVRAISON, default='en_attente_selection')
-    date_acceptation = models.DateTimeField(null=True,blank=True)
-    date_livraison = models.DateTimeField(null=True,blank=True)
-    date_confirmation = models.DateTimeField(null=True,blank=True)
-    created_at =models.DateTimeField(auto_now_add=True)
+    date_acceptation = models.DateTimeField(null=True, blank=True)
+    date_livraison = models.DateTimeField(null=True, blank=True)
+    date_confirmation = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "livraisons"
 
 TYPE_TRANSACTION = [('paiement', 'Paiement'), ('remboursement', 'Remboursement')]
 STATUT_TRANSACTION = [('en_attente', 'En attente'), ('reussi', 'Réussi'), ('echoue', 'Échoué')]

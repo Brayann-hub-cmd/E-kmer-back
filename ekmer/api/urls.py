@@ -4,7 +4,14 @@ from .categorie_views import CategorieViewSet,LowCategorieViewSet,SousCategorieP
 from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce,AnnonceByUser,AllAnnonces,SuspendreAnnonceView
 from .vente_views import VenteView,VenteDetailView,VentesVendeurView,AchatUtilisateurView,PanierView,PanierItemAddView,PanierItemDetailView,PanierViderView,OrderListCreateView,OrderConfirmerView
 from .favoris_views import FavorisView
-from .livreurs_views import LivreurListView, LivreurUpdateView, LivreurValiderView
+from .livreurs_views import (
+    LivreurListView, LivreurUpdateView, LivreurValiderView,
+    LivreurMeView, TrajetLivreurListCreateView, TrajetLivreurDetailView,
+)
+from .livraison_views import (
+    LivraisonCreateView, MesLivraisonsLivreurView, LivraisonRepondreView,
+    LivraisonDemarrerView, LivraisonMarquerLivreeView, LivraisonConfirmerView,
+)
 from django.urls import path,include
 from django.conf import settings
 from . import paiement_views
@@ -43,4 +50,13 @@ urlpatterns = [
     path('annonces/<str:code>/statut/', SuspendreAnnonceView.as_view(), name='annonce-suspendre'),
     path('livreurs/<uuid:id>/valider/', LivreurValiderView.as_view(), name='livreur-valider'),
     path('livreurs/<uuid:id>/', LivreurUpdateView.as_view(), name='livreur-update'),
+    path('livreurs/me/', LivreurMeView.as_view(), name='livreur-me'),
+    path('livreurs/me/trajets/', TrajetLivreurListCreateView.as_view(), name='livreur-trajets'),
+    path('livreurs/me/trajets/<uuid:id>/', TrajetLivreurDetailView.as_view(), name='livreur-trajet-detail'),
+    path('livreurs/me/livraisons/', MesLivraisonsLivreurView.as_view(), name='livreur-livraisons'),
+    path('livraisons/', LivraisonCreateView.as_view(), name='livraison-create'),
+    path('livraisons/<uuid:id>/repondre/', LivraisonRepondreView.as_view(), name='livraison-repondre'),
+    path('livraisons/<uuid:id>/demarrer/', LivraisonDemarrerView.as_view(), name='livraison-demarrer'),
+    path('livraisons/<uuid:id>/marquer-livree/', LivraisonMarquerLivreeView.as_view(), name='livraison-marquer-livree'),
+    path('livraisons/<uuid:id>/confirmer/', LivraisonConfirmerView.as_view(), name='livraison-confirmer'),
 ]

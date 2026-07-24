@@ -1,9 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers_livreur import LivreurDisponibleSerializer,LivreurSerializer
-from .models import Livreur
+from .serializers_livreur import LivreurDisponibleSerializer,LivreurSerializer,TrajetLivreurSerializer
+from .models import Livreur,TrajetLivreur
 from .views import verifier_token
+from django.shortcuts import get_object_or_404
 class LivreurListView(APIView):
     def get(self, request):
         ville_arrivee = request.query_params.get('ville_arrivee')
@@ -49,3 +50,63 @@ class LivreurUpdateView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)    
+
+class LivreurMeView(APIView):
+    def get(self, request):
+        user, erreur = verifier_token(request)
+        if erreur:
+            return Response({"error": erreur}, status=status.HTTP_401_UNAUTHORIZED)
+        livreur = get_object_or_404(Livreur, user=user)
+        return Response(LivreurSerializer(livreur).data)
+
+    def patch(self, request):
+        user, erreur = verifier_token(request)
+        if erreur:
+            return Response({"error": erreur}, status=status.HTTP_401_UNAUTHORIZED)
+        livreur = get_object_or_404(Livreur, user=user)
+        serializer = LivreurSerializer(livreur, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+class TrajetLivreurListCreateView(APIView):
+    def get(self, request):
+        user, erreur = verifier_token(request)
+        if erreur:
+            return Response({"error": erreur}, status=status.HTTP_401_UNAUTHORIZED)
+        livreur = get_object_or_404(Livreur, user=user)
+        return Response(TrajetLivreurSerializer(livreur.trajets.all(), many=True).data)
+
+    def post(self, request):
+        user, erreur = verifier_token(request)
+        if erreur:
+            return Response({"error": erreur}, status=status.HTTP_401_UNAUTHORIZED)
+        livreur = get_object_or_404(Livreur, user=user)
+        serializer = TrajetLivreurSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(livreur=livreur)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class TrajetLivreurDetailView(APIView):
+    def patch(self, request, id):
+        user, erreur = verifier_token(request)
+        if erreur:
+            return Response({"error": erreur}, status=status.HTTP_401_UNAUTHORIZED)
+        livreur = get_object_or_404(Livreur, user=user)
+        trajet = get_object_or_404(TrajetLivreur, id=id, livreur=livreur)
+        serializer = TrajetLivreurSerializer(trajet, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, id):
+        user, erreur = verifier_token(request)
+        if erreur:
+            return Response({"error": erreur}, status=status.HTTP_401_UNAUTHORIZED)
+        livreur = get_object_or_404(Livreur, user=user)
+        trajet = get_object_or_404(TrajetLivreur, id=id, livreur=livreur)
+        trajet.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+

@@ -218,28 +218,30 @@ from .serializers_livreur import LivreurSerializer
 class LivraisonSerializer(serializers.ModelSerializer):
     livreur = LivreurSerializer(read_only=True)
     statut_display = serializers.CharField(source='get_statut_display', read_only=True)
-    order_id = serializers.UUIDField(source='order.id', read_only=True)
-    montant_commande = serializers.DecimalField(
-        source='order.montant_total', max_digits=10, decimal_places=2, read_only=True
-    )
+    order_id = serializers.IntegerField(source='order.id', read_only=True)
+    montant_commande = serializers.DecimalField(source='order.total', max_digits=12, decimal_places=2, read_only=True)
+    client_nom = serializers.CharField(source='order.user.username', read_only=True)
+    client_telephone = serializers.CharField(source='order.user.telephone', read_only=True)
+    articles = serializers.SerializerMethodField()
 
     class Meta:
         model = Livraison
         fields = [
-            'id', 'order_id', 'montant_commande', 'livreur',
-            'ville_depart', 'ville_livraison',
-            'statut', 'statut_display',
-            'date_acceptation', 'date_livraison', 'date_confirmation',
-            'created_at',
+            'id', 'order_id', 'montant_commande', 'client_nom', 'client_telephone', 'articles',
+            'livreur', 'ville_depart', 'ville_livraison', 'statut', 'statut_display',
+            'date_acceptation', 'date_livraison', 'date_confirmation', 'created_at',
         ]
         read_only_fields = fields
+
+    def get_articles(self, obj):
+        return ", ".join(f"{item.titre} x{item.quantite}" for item in obj.order.items.all())
 
 class LivraisonCreateSerializer(serializers.ModelSerializer):
     livreur_id = serializers.UUIDField(write_only=True)
 
     class Meta:
         model = Livraison
-        fields = ['order', 'livreur_id', 'ville_livraison']
+        fields = ['order', 'livreur_id', 'ville_depart', 'ville_livraison']
 
     def validate_order(self, order):
         if hasattr(order, 'livraison'):
