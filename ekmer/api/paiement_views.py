@@ -21,6 +21,8 @@ def initier_paiement(request):
     if order.statut_paiement == 'paye':
         return Response({"erreur": "Cette commande est déjà payée"}, status=status.HTTP_400_BAD_REQUEST)
 
+    telephone_paiement = request.data.get('telephone') or user.telephone
+
     cinetpay_transaction_id = f"EKMER{uuid.uuid4().hex[:16].upper()}"
     transaction = Transaction.objects.create(
         order=order, type_transaction='paiement', montant=order.total,
@@ -29,7 +31,7 @@ def initier_paiement(request):
     client_data = {
         "nom": user.username or "",
         "prenom": "",
-        "telephone": user.telephone or "",
+        "telephone": telephone_paiement or "",
         "email": user.email or "",
         "ville": order.livraison.ville_livraison if hasattr(order, 'livraison') else "Douala",
     }
@@ -48,7 +50,6 @@ def initier_paiement(request):
         return Response({"erreur": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
     return Response({"payment_url": resultat['payment_url'], "transaction_id": cinetpay_transaction_id})
-
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
