@@ -133,65 +133,47 @@ class ProfileView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SignInWithEmailAndPassword(APIView):
-    def post(self,request):
+    def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
         username = request.data.get('username')
         telephone = request.data.get('telephone')
-        role = request.data.get('role','user')
+        # 'role' n'est plus lu depuis request.data — toujours 'user' ici.
 
         if not email:
-            return Response(
-                {"error":"L'adresse mail est un champ obligatoire."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "L'adresse mail est un champ obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         if not password:
-            return Response(
-                {"error":"Le mot de passe est des champ obligatoire."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Le mot de passe est un champ obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         if not telephone:
-            return Response(
-                {"error":"Le numéro de télephone est un champ obligatoire."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Le numéro de téléphone est un champ obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         if not username:
-            return Response(
-                {"error":"Le nom d'utilisateur est un champ obligatoire."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Le nom d'utilisateur est un champ obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         if Users.objects.filter(email=email).exists():
-            return Response({
-                "error":"Un utilisateur utilise déjà cet adresse email."
-            },status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({"error": "Un utilisateur utilise déjà cet adresse email."}, status=status.HTTP_400_BAD_REQUEST)
         if Users.objects.filter(telephone=telephone).exists():
-            return Response({
-                "error":"Un utilisateur utilise déjà ce numéro de téléphone."
-            },status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({"error": "Un utilisateur utilise déjà ce numéro de téléphone."}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             user = Users.objects.create(
-                username = username,
-                telephone = telephone,
-                email = email,
-                password = password,
-                role = role,
+                username=username,
+                telephone=telephone,
+                email=email,
+                password=password,
+                role='user',  # forcé côté serveur, jamais depuis le client
             )
             return Response(
                 {
-                    "message":"Compte crée avec succès",
-                    "user":{
-                        "id":user.id,
-                        "username":user.username,
-                        "email":user.email,
-                        "telephone":user.telephone
+                    "message": "Compte crée avec succès",
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "telephone": user.telephone,
                     }
-                },status=status.HTTP_201_CREATED
+                }, status=status.HTTP_201_CREATED
             )
         except Exception as e:
-            return Response({"error":str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class ProfilePhotoView(APIView):
     def patch(self,request):
         user, error = verifier_token(request)

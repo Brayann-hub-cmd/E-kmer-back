@@ -89,3 +89,13 @@ class LivraisonConfirmerView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(LivraisonSerializer(livraison).data)
+
+class LivraisonParCommandeView(APIView):
+    def get(self, request, order_id):
+        user, erreur = verifier_token(request)
+        if erreur:
+            return Response({"error": erreur}, status=status.HTTP_401_UNAUTHORIZED)
+        order = get_object_or_404(Order, id=order_id, user=user)
+        if not hasattr(order, 'livraison'):
+            return Response({"error": "Aucune livraison associée à cette commande"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(LivraisonSerializer(order.livraison).data)

@@ -221,7 +221,7 @@ class Livreur(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(Users,on_delete=models.CASCADE,related_name='profil_livreur')
     disponible = models.BooleanField(default=True)
-    is_validated = models.BooleanField(default=False)
+    is_validated = models.BooleanField(default=True)
     type_vehicule = models.CharField(max_length=32, null=True, blank=True)
     num_permis = models.CharField(max_length=64, null=True, blank=True)
     num_plaque = models.CharField(max_length=32, null=True, blank=True)

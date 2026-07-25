@@ -89,29 +89,41 @@ class VenteView(APIView):
 
 class VenteDetailView(APIView):
     permission_classes = [AllowAny]
-    def get(self,request,code):
-        auth,error = verify(request)
+
+    def get(self, request, code):
+        auth, error = verify(request)
         if error:
-            return Response(
-                {'error':error},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({'error': error}, status=status.HTTP_401_UNAUTHORIZED)
         request.user = auth
         user = request.user
+
         try:
             vente = Vente.objects.prefetch_related('lignes').get(code=code)
         except Vente.DoesNotExist:
-            return Response(
-                {"error":"Vente introuvable"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        if vente.acheteur != user:
-            return Response(
-                {"error":"Accès refusé"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        serializer = VenteDetailSerializer(vente)
-        return Response(serializer.data,status=status.HTTP_200_OK)
+            return Response({"error": "Vente introuvable"}, status=status.HTTP_404_NOT_FOUND)
+
+        est_acheteur = vente.acheteur == user
+        lignes_vendeur = vente.lignes.filter(annonce__vendeur=user)
+        est_vendeur = lignes_vendeur.exists()
+
+        if not (est_acheteur or est_vendeur):
+            return Response({"error": "Accès refusé"}, status=status.HTTP_403_FORBIDDEN)
+
+        # l'acheteur voit toutes les lignes ; un vendeur ne voit que les siennes
+        # (une même Vente peut contenir des annonces de plusieurs vendeurs)
+        lignes = vente.lignes.all() if est_acheteur else lignes_vendeur
+        total = vente.prix_total if est_acheteur else sum(l.prix_unitaire * l.quantite for l in lignes)
+
+        return Response({
+            "code": vente.code,
+            "acheteur_nom": vente.acheteur.username,
+            "statut": vente.statut,
+            "mode_paiement": vente.mode_paiement,
+            "created_at": vente.created_at.isoformat(),
+            "total": total,
+            "lignes": LigneDetailVenteSerializer(lignes, many=True).data,
+            "vue": "acheteur" if est_acheteur else "vendeur",
+        })
 
 class VentesVendeurView(APIView):
     permission_classes = [AllowAny]
@@ -338,5 +350,15 @@ class WebhookCinetPayView(APIView):
         else:
             order.statut = Order.Statut.ANNULEE
             order.save()
-        return Response(status=status.HTTP_200_OK)         
+        return Response(status=status.HTTP_200_OK)       
+
+class OrderDetailView(APIView):
+    def get(self, request, order_id):
+        auth, error = verify(request)
+        if error:
+            return Response({'error': error}, status=status.HTTP_401_UNAUTHORIZED)
+        request.user = auth
+        user = request.user
+        order = get_object_or_404(Order, id=order_id, user=user)
+        return Response(OrderSerializer(order).data)  
         

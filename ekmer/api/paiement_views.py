@@ -9,6 +9,30 @@ from .utils import verifier_token, get_payment_client, CinetPayError
 from .models import Transaction, Order, Livraison
 from django.core.exceptions import ObjectDoesNotExist
 
+from django.conf import settings
+
+def _traiter_resultat_paiement(transaction, verification):
+    if verification.get('code') == '00' and verification['data']['status'] == 'ACCEPTED':
+        transaction.statut = 'reussi'
+        transaction.operateur = verification['data'].get('payment_method', '')
+        transaction.save()
+
+        order = transaction.order
+        try:
+            order.confirmer()
+            order.statut_paiement = 'paye'
+            order.save()
+        except ValueError:
+            transaction.statut = 'echoue'
+            transaction.save()
+            order.statut_paiement = 'echoue'
+            order.statut = Order.Statut.ANNULEE
+            order.save()
+    else:
+        transaction.statut = 'echoue'
+        transaction.save()
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def initier_paiement(request):
@@ -17,22 +41,18 @@ def initier_paiement(request):
         return Response({"erreur": erreur}, status=status.HTTP_401_UNAUTHORIZED)
 
     order = get_object_or_404(Order, id=request.data.get('order_id'), user=user)
-
     if order.statut_paiement == 'paye':
         return Response({"erreur": "Cette commande est déjà payée"}, status=status.HTTP_400_BAD_REQUEST)
 
     telephone_paiement = request.data.get('telephone') or user.telephone
-
     cinetpay_transaction_id = f"EKMER{uuid.uuid4().hex[:16].upper()}"
     transaction = Transaction.objects.create(
         order=order, type_transaction='paiement', montant=order.total,
         cinetpay_transaction_id=cinetpay_transaction_id, statut='en_attente',
     )
     client_data = {
-        "nom": user.username or "",
-        "prenom": "",
-        "telephone": telephone_paiement or "",
-        "email": user.email or "",
+        "nom": user.username or "", "prenom": "",
+        "telephone": telephone_paiement or "", "email": user.email or "",
         "ville": order.livraison.ville_livraison if hasattr(order, 'livraison') else "Douala",
     }
     try:
@@ -49,53 +69,35 @@ def initier_paiement(request):
         transaction.save()
         return Response({"erreur": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
-    return Response({"payment_url": resultat['payment_url'], "transaction_id": cinetpay_transaction_id})
+    return Response({
+        "payment_url": resultat['payment_url'],
+        "transaction_id": cinetpay_transaction_id,
+        "mode": "production" if getattr(settings, 'PAIEMENT_MODE', 'simulation') == 'production' else "simulation",
+    })
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def webhook_callback(request):
-
     cinetpay_transaction_id = request.data.get('cpm_trans_id') or request.data.get('transaction_id')
     if not cinetpay_transaction_id:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     transaction = get_object_or_404(Transaction, cinetpay_transaction_id=cinetpay_transaction_id)
-
-    cinetpay_client = get_payment_client()
-    verification = cinetpay_client.verifier_paiement(cinetpay_transaction_id)
-
-    if verification.get('code') == '00' and verification['data']['status'] == 'ACCEPTED':
-        transaction.statut = 'reussi'
-        transaction.operateur = verification['data'].get('payment_method', '')
-        transaction.save()
-
-        order = transaction.order
-
-        try:
-            order.confirmer()  # décrémente le stock + passe statut à CONFIRMEE
-            order.statut_paiement = 'paye'
-            order.save()
-            try:
-                livraison = order.livraison
-            except (Livraison.DoesNotExist, ObjectDoesNotExist):
-                livraison = None
-            if livraison and livraison.statut == 'en_attente_selection':
-                livraison.statut = 'en_attente_acceptation'
-                livraison.save()
-        except ValueError as e:
-            # paiement réussi mais stock insuffisant -> cas à gérer
-            transaction.statut = 'echoue'
-            transaction.save()
-            order.statut_paiement = 'echoue'
-            order.statut = Order.Statut.ANNULEE
-            order.save()
-            # TODO: déclencher un remboursement CinetPay ici, ou notifier l'admin
-    else:
-        transaction.statut = 'echoue'
-        transaction.save()
-
+    verification = get_payment_client().verifier_paiement(cinetpay_transaction_id)  # ← utilisait CinetPayClient() en dur
+    _traiter_resultat_paiement(transaction, verification)
     return Response(status=status.HTTP_200_OK)
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def simuler_paiement(request):
+    if getattr(settings, 'PAIEMENT_MODE', 'simulation') == 'production':
+        return Response({"erreur": "Simulation désactivée en production"}, status=status.HTTP_403_FORBIDDEN)
+
+    transaction_id = request.data.get('transaction_id')
+    transaction = get_object_or_404(Transaction, cinetpay_transaction_id=transaction_id)
+    verification = get_payment_client().verifier_paiement(transaction_id)
+    _traiter_resultat_paiement(transaction, verification)
+    return Response({"statut": transaction.statut, "order_statut": transaction.order.statut})
 
 def declencher_remboursement(order):
     transaction_paiement = order.transactions.filter(

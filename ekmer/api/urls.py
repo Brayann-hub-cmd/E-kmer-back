@@ -2,15 +2,17 @@ from rest_framework.routers import DefaultRouter
 from .views import UserViewSet, LoginWithEmailAndPasswordView,ProfileView,SignInWithEmailAndPassword,LoginWithPhoneAndPasswordView,ProfilePhotoView
 from .categorie_views import CategorieViewSet,LowCategorieViewSet,SousCategorieParCategorieView
 from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce,AnnonceByUser,AllAnnonces,SuspendreAnnonceView
-from .vente_views import VenteView,VenteDetailView,VentesVendeurView,AchatUtilisateurView,PanierView,PanierItemAddView,PanierItemDetailView,PanierViderView,OrderListCreateView,OrderConfirmerView
+from .vente_views import VenteView,VenteDetailView,VentesVendeurView,AchatUtilisateurView,PanierView,PanierItemAddView,PanierItemDetailView,PanierViderView,OrderListCreateView,OrderConfirmerView,OrderDetailView
 from .favoris_views import FavorisView
 from .livreurs_views import (
     LivreurListView, LivreurUpdateView, LivreurValiderView,
     LivreurMeView, TrajetLivreurListCreateView, TrajetLivreurDetailView,
+    LivreurLoginView, LivreurRegisterView
 )
 from .livraison_views import (
     LivraisonCreateView, MesLivraisonsLivreurView, LivraisonRepondreView,
     LivraisonDemarrerView, LivraisonMarquerLivreeView, LivraisonConfirmerView,
+    LivraisonParCommandeView
 )
 from django.urls import path,include
 from django.conf import settings
@@ -44,6 +46,7 @@ urlpatterns = [
     path('favoris/',FavorisView.as_view(),name='favoris'),
     path('favoris/<str:annonce_code>/',FavorisView.as_view(),name='favoris-delete'),
     path('auth/profil/photo/',ProfilePhotoView.as_view(),name='profil-photo'),
+    path('paiements/simuler/', paiement_views.simuler_paiement, name='simuler-paiement'),
     path('paiements/initier/', paiement_views.initier_paiement, name='initier-paiement'),
     path('paiements/webhook/', paiement_views.webhook_callback, name='webhook-paiement'),
     path('livreurs/', LivreurListView.as_view(), name='livreurs-list'),
@@ -59,4 +62,8 @@ urlpatterns = [
     path('livraisons/<uuid:id>/demarrer/', LivraisonDemarrerView.as_view(), name='livraison-demarrer'),
     path('livraisons/<uuid:id>/marquer-livree/', LivraisonMarquerLivreeView.as_view(), name='livraison-marquer-livree'),
     path('livraisons/<uuid:id>/confirmer/', LivraisonConfirmerView.as_view(), name='livraison-confirmer'),
+    path('auth/livreur/login/', LivreurLoginView.as_view(), name='livreur-login'),
+    path('auth/livreur/register/', LivreurRegisterView.as_view(), name='livreur-register'),
+    path('commandes/<int:order_id>/', OrderDetailView.as_view(), name='commande-detail'),
+    path('commandes/<int:order_id>/livraison/', LivraisonParCommandeView.as_view(), name='commande-livraison'),
 ]
