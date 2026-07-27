@@ -343,3 +343,22 @@ class TransactionSerializer(serializers.ModelSerializer):
             'statut', 'statut_display', 'created_at',
         ]
         read_only_fields = fields
+        
+from .models import Consultation
+
+class ConsultationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Consultation
+        fields = ['id', 'annonce', 'utilisateur', 'ip_address', 'consulted_at']
+        read_only_fields = ['consulted_at']
+
+class AnnonceConsultationsSerializer(serializers.ModelSerializer):
+    nombre_consultations = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Annonce
+        fields = ['code', 'titre', 'nombre_consultations']
+    
+    def get_nombre_consultations(self, obj):
+        return Consultation.objects.filter(annonce=obj).count()
+

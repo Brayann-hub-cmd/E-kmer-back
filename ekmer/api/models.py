@@ -279,3 +279,15 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.type_transaction} - {self.cinetpay_transaction_id} - {self.statut}"
 
+class Consultation(models.Model):
+    annonce = models.ForeignKey(Annonce, on_delete=models.CASCADE, related_name='consultations')
+    utilisateur = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True, blank=True)  # null si non connecté
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    consulted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "consultations"
+        ordering = ['-consulted_at']
+
+

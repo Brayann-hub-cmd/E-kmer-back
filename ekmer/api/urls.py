@@ -17,6 +17,7 @@ from .livraison_views import (
 from django.urls import path,include
 from django.conf import settings
 from . import paiement_views
+from . import consultations
 router = DefaultRouter()
 router.register('users',UserViewSet)
 router.register('categories',CategorieViewSet)
@@ -65,4 +66,6 @@ urlpatterns = [
     path('auth/livreur/register/', LivreurRegisterView.as_view(), name='livreur-register'),
     path('commandes/<int:order_id>/', OrderDetailView.as_view(), name='commande-detail'),
     path('commandes/<int:order_id>/livraison/', LivraisonParCommandeView.as_view(), name='commande-livraison'),
+    path('api/annonces/<str:code_annonce>/consultation/', consultations.enregistrer_consultation, name='enregistrer-consultation'),
+    path('api/annonces/<str:code_annonce>/consultations/nombre/', consultations.nombre_consultations, name='nombre-consultations'),
 ]
