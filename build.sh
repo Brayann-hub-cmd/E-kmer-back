@@ -27,3 +27,38 @@ for admin in admins:
     else:
         print(f'Admin deja existant, aucune modification: {email}')
 "
+python ekmer/manage.py shell -c "
+from api.models import Users, Livreur
+
+livreurs = '$LIVREUR_ACCOUNTS'.split(';')
+for livreur in livreurs:
+    parts = livreur.split(',')
+    if len(parts) != 7:
+        continue
+    username, email, password, telephone, type_vehicule, num_permis, num_plaque = parts
+    user, created = Users.objects.get_or_create(
+        email=email,
+        defaults={
+            'username': username,
+            'telephone': telephone,
+            'password': password,
+            'role': 'livreur',
+            'is_active': True
+        }
+    )
+    if created:
+        print(f'Livreur cree: {email}')
+    else:
+        print(f'Livreur deja existant: {email}')
+
+    Livreur.objects.get_or_create(
+        user=user,
+        defaults={
+            'type_vehicule': type_vehicule,
+            'num_permis': num_permis,
+            'num_plaque': num_plaque,
+            'disponible': True,
+            'is_validated': True
+        }
+    )
+"
