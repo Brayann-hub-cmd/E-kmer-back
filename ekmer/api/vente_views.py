@@ -109,8 +109,6 @@ class VenteDetailView(APIView):
         if not (est_acheteur or est_vendeur):
             return Response({"error": "Accès refusé"}, status=status.HTTP_403_FORBIDDEN)
 
-        # l'acheteur voit toutes les lignes ; un vendeur ne voit que les siennes
-        # (une même Vente peut contenir des annonces de plusieurs vendeurs)
         lignes = vente.lignes.all() if est_acheteur else lignes_vendeur
         total = vente.prix_total if est_acheteur else sum(l.prix_unitaire * l.quantite for l in lignes)
 
@@ -190,10 +188,7 @@ class PanierItemAddView(APIView):
     def post(self,request):
         auth,error = verify(request)
         if error:
-            return Response(
-                {'error':error},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({'error':error},status=status.HTTP_401_UNAUTHORIZED)
         request.user = auth
         user = request.user
         panier,_ = Panier.objects.get_or_create(user=user)
@@ -202,6 +197,12 @@ class PanierItemAddView(APIView):
             return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
         annonce = serializer.validated_data["annonce"]
         quantite = serializer.validated_data["quantite"]
+
+        if annonce.vendeur == user:
+            return Response(
+                {"error": "Vous ne pouvez pas ajouter votre propre annonce au panier."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         item,created = PanierItem.objects.get_or_create(
             panier = panier, annonce=annonce, defaults={"quantite":quantite}
@@ -289,11 +290,14 @@ class OrderListCreateView(APIView):
         if not items.exists():
             return Response({"error": "Le panier est vide."}, status=status.HTTP_400_BAD_REQUEST)
 
-        total = sum(item.sous_total() for item in items)
-        livraison_data = request.data.get('livraison')
-        if livraison_data and livraison_data.get('modeLivraison') == 'domicile':
-            total += Decimal(str(livraison_data.get('fraisTotal', 0)))
+        items_invalides = [item.annonce.titre for item in items if item.annonce.vendeur == user]
+        if items_invalides:
+            return Response(
+                {"error": f"Retirez d'abord vos propres annonces du panier : {', '.join(items_invalides)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
+        total = sum(item.sous_total() for item in items)
         order = Order.objects.create(user=user, total=total)
         OrderItems.objects.bulk_create([
             OrderItems(
@@ -301,22 +305,8 @@ class OrderListCreateView(APIView):
                 prix=item.annonce.prix, quantite=item.quantite
             ) for item in items
         ])
-
-        if livraison_data and livraison_data.get('modeLivraison') == 'domicile':
-            livraison_payload = {
-                'order': order.id,
-                'livreur_id': livraison_data.get('livreur_id'),
-                'ville_depart': livraison_data.get('ville_depart'),
-                'ville_livraison': livraison_data.get('ville_livraison'),
-            }
-            livraison_serializer = LivraisonCreateSerializer(data=livraison_payload)
-            if livraison_serializer.is_valid():
-                livraison_serializer.save()
-            else:
-                order.delete()
-                return Response(livraison_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         items.delete()
+
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
     
 class OrderConfirmerView(APIView):

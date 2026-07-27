@@ -33,7 +33,7 @@ def verify(request):
         return None,str(e)
 
 class AnnonceViewSet(viewsets.ModelViewSet):
-    queryset = Annonce.objects.all()
+    queryset = Annonce.objects.select_related('sous_categorie__categorie', 'vendeur').all()
     serializer_class = AnnonceSerializer
     permission_classes = [AnnoncePermission]
     parser_classes = [MultiPartParser, FormParser]
@@ -46,26 +46,22 @@ class AnnonceViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save(vendeur=user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-class AllAnnonces(APIView):
-    def get(self, request):
-        annonces = Annonce.objects.select_related('sous_categorie__categorie', 'vendeur').all()
-        serializer = AnnonceSerializer(annonces, many=True, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
 class AnnonceParSousCategorie(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request, low_categorie_code):
         if not LowCategorie.objects.filter(code=low_categorie_code).exists():
             return Response(
-                {"error":"Sous catégorie introuvable"},
+                {"error": "Sous catégorie introuvable"},
                 status=status.HTTP_404_NOT_FOUND
             )
         annonces = Annonce.objects.filter(sous_categorie=low_categorie_code)
-        serializer = AnnonceSerializer(annonces,many=True,context={'request':request})
+        serializer = AnnonceSerializer(annonces, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class RechercherAnnonce(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
     def get(self,request):
         titre = request.query_params.get('titre', '').strip()
         categorie_id = request.query_params.get('categorie', None)

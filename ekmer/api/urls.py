@@ -1,7 +1,7 @@
 from rest_framework.routers import DefaultRouter
 from .views import UserViewSet, LoginWithEmailAndPasswordView,ProfileView,SignInWithEmailAndPassword,LoginWithPhoneAndPasswordView,ProfilePhotoView
 from .categorie_views import CategorieViewSet,LowCategorieViewSet,SousCategorieParCategorieView
-from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce,AnnonceByUser,AllAnnonces,SuspendreAnnonceView
+from .annonce_views import AnnonceViewSet,AnnonceParSousCategorie,RechercherAnnonce,AnnonceByUser,SuspendreAnnonceView
 from .vente_views import VenteView,VenteDetailView,VentesVendeurView,AchatUtilisateurView,PanierView,PanierItemAddView,PanierItemDetailView,PanierViderView,OrderListCreateView,OrderConfirmerView,OrderDetailView
 from .favoris_views import FavorisView
 from .livreurs_views import (
@@ -23,7 +23,6 @@ router.register('categories',CategorieViewSet)
 router.register('sous_categories',LowCategorieViewSet)
 router.register('annonces',AnnonceViewSet,basename='annonce')
 urlpatterns = [
-    path('annonces/',AllAnnonces.as_view(),name='annonces'),   # ← déplacé avant le router
     path('',include(router.urls)),
     path('auth/login/',LoginWithEmailAndPasswordView.as_view(),name='login'),
     path('auth/login/tel',LoginWithPhoneAndPasswordView.as_view(),name='logintel'),
